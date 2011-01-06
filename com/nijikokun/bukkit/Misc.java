@@ -3,8 +3,8 @@ package com.nijikokun.bukkit;
 import org.bukkit.Player;
 
 /**
- * iConomy v1.x
- * Copyright (C) 2010  Nijikokun <nijikokun@gmail.com>
+ * General 1.1 & Code from iConomy 2.x
+ * Copyright (C) 2011  Nijikokun <nijikokun@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +19,6 @@ import org.bukkit.Player;
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 
 /**
  * Misc.java
@@ -175,5 +174,17 @@ public class Misc {
         }
 
         return lastPlayer;
+    }
+
+   public static String combineSplit(int startIndex, String[] string, String seperator) {
+        StringBuilder builder = new StringBuilder();
+	
+        for (int i = startIndex; i < string.length; i++) {
+            builder.append(string[i]);
+            builder.append(seperator);
+        }
+
+        builder.deleteCharAt(builder.length() - seperator.length()); // remove
+        return builder.toString();
     }
 }

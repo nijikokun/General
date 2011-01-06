@@ -1,23 +1,25 @@
 package com.nijikokun.bukkit;
 
 
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.logging.Logger;
 import org.bukkit.Player;
 import org.bukkit.World;
 import org.bukkit.event.player.PlayerChatEvent;
+import org.bukkit.event.player.PlayerEvent;
 import org.bukkit.event.player.PlayerListener;
 import org.bukkit.plugin.Plugin;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.WorldServer;
-import org.bukkit.Color;
 import org.bukkit.Location;
-import org.bukkit.craftbukkit.CraftServer;
 import org.bukkit.craftbukkit.CraftWorld;
 
 
 /**
- * iConomy v1.x
- * Copyright (C) 2010  Nijikokun <nijikokun@gmail.com>
+ * General 1.1 & Code from iConomy 2.x
+ * Copyright (C) 2011  Nijikokun <nijikokun@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -49,6 +51,11 @@ public class iListen extends PlayerListener {
      */
     public Misc Misc = new Misc();
 
+    /**
+     * AFK
+     */
+    public ArrayList<Player> AFK = new ArrayList<Player>();
+
     public static General plugin;
     public General p;
     public WorldServer server;
@@ -73,6 +80,10 @@ public class iListen extends PlayerListener {
 	Messaging.send("&f /spawn &6- &eReturn to spawn                        ");
 	Messaging.send("&f /setspawn &6- &eChange spawn to where you are       ");
 	Messaging.send("&f /time (day|night|raw) &6- &eChange the time         ");
+	Messaging.send("&f /me - Emote your messages                           ");
+	Messaging.send("&f /afk - Go away or come back                         ");
+	Messaging.send("&f /message|tell|m [player] [message] - Private msg    ");
+	Messaging.send("&f /compass|getpos - information about position        ");
 	Messaging.send("&f /help or /? &6- &eReturns this documentation        ");
 	Messaging.send("&e-----------------------------------------------------");
     }
@@ -135,6 +146,69 @@ public class iListen extends PlayerListener {
         server.e += margin;
     }
 
+    public static String getDirection(double degrees) {
+        if (0 <= degrees && degrees < 22.5) {
+            return "N";
+        } else if (22.5 <= degrees && degrees < 67.5) {
+            return "NE";
+        } else if (67.5 <= degrees && degrees < 112.5) {
+            return "E";
+        } else if (112.5 <= degrees && degrees < 157.5) {
+            return "SE";
+        } else if (157.5 <= degrees && degrees < 202.5) {
+            return "S";
+        } else if (202.5 <= degrees && degrees < 247.5) {
+            return "SW";
+        } else if (247.5 <= degrees && degrees < 292.5) {
+            return "W";
+        } else if (292.5 <= degrees && degrees < 337.5) {
+            return "NW";
+        } else if (337.5 <= degrees && degrees < 360.0) {
+            return "N";
+        } else {
+            return "ERR";
+        }
+    }
+
+    public boolean isAFK(Player player) {
+	return AFK.contains(player);
+    }
+
+    public void AFK(Player player) {
+	AFK.add(player);
+    }
+
+    public void unAFK(Player player) {
+	AFK.remove(player);
+    }
+
+    public String[] readMotd() {
+	ArrayList<String> lines = new ArrayList<String>();
+
+	try {
+	    BufferedReader in = new BufferedReader(new FileReader(General.directory + "general.motd"));
+	    String str;
+	    while ((str = in.readLine()) != null) {
+		lines.add(str);
+	    }
+	    in.close();
+	} catch (IOException e) { }
+
+	return lines.toArray(new String[]{});
+    }
+
+    @Override
+    public void onPlayerJoin(PlayerEvent event) {
+        Player player = event.getPlayer();
+	String[] motd = readMotd();
+
+	if(motd == null || motd.length < 1) { return; }
+
+	for(String line : motd) {
+	    Messaging.send(player, line);
+	}
+    }
+
     /**
      * Commands sent from in game to us.
      *
@@ -177,6 +251,17 @@ public class iListen extends PlayerListener {
 	    event.setCancelled(true);
 	}
 
+	if(Misc.is(base, "/motd")) {
+	    String[] motd = readMotd();
+
+	    if(motd == null || motd.length < 1) { return; }
+
+	    for(String line : motd) {
+		Messaging.send(player, line);
+	    }
+	    event.setCancelled(true);
+	}
+
 	if(Misc.isEither(base, "/tp", "/teleport")) {
 	    if (!General.Watch.permission("teleport", player)) {
 		return;
@@ -199,6 +284,109 @@ public class iListen extends PlayerListener {
 		player.teleportTo(who.getLocation());
 	    } else {
 		Messaging.send("&cCan't find user " + split[1] + ".");
+	    }
+
+	    event.setCancelled(true);
+	}
+
+	if(Misc.isEither(base, "/s", "/tphere")) {
+	    if (!General.Watch.permission("teleport", player)) {
+		return;
+	    }
+
+	    if (split.length < 1) {
+		Messaging.send("&cCorrect usage is:&f /s [player] &cor&f /tphere [player]");
+		return;
+	    }
+
+	    Player who = Misc.playerMatch(split[1]);
+
+	    if (player != null) {
+		if (who.getName().equalsIgnoreCase(player.getName())) {
+		    Messaging.send("&cWow look at that! You teleported yourself to yourself!");
+		    return;
+		}
+
+		log.info(player.getName() + " teleported " + who.getName() + " to their self.");
+		who.teleportTo(player.getLocation());
+	    } else {
+		Messaging.send("&cCan't find user " + split[1] + ".");
+	    }
+
+	    event.setCancelled(true);
+	}
+
+	if(Misc.is(base, "/getpos")) {
+	    Messaging.send("Pos X: " + player.getLocation().getX() + " Y: " + player.getLocation().getY() + " Z: " + player.getLocation().getZ());
+	    Messaging.send("Rotation: " + player.getLocation().getYaw() + " Pitch: " + player.getLocation().getPitch());
+
+	    double degreeRotation = ((player.getLocation().getYaw() - 90) % 360);
+
+	    if (degreeRotation < 0) {
+		degreeRotation += 360.0;
+	    }
+
+	    Messaging.send("Compass: " + getDirection(degreeRotation) + " (" + (Math.round(degreeRotation * 10) / 10.0) + ")");
+
+	    event.setCancelled(true);
+	}
+	
+	if(Misc.is(base, "/compass")) {
+	    double degreeRotation = ((player.getLocation().getYaw() - 90) % 360);
+
+	    if (degreeRotation < 0) {
+		degreeRotation += 360.0;
+	    }
+
+	    Messaging.send("&cCompass: " + getDirection(degreeRotation));
+	    
+	    event.setCancelled(true);
+	}
+
+	if(Misc.isEither(base, "/afk", "/away")) {
+	    if ((AFK != null || !AFK.isEmpty()) && isAFK(player)) {
+		Messaging.send("&7You have been marked as back.");
+		unAFK(player);
+	    } else {
+		Messaging.send("&7You are now currently marked as away.");
+		AFK(player);
+	    }
+
+	    event.setCancelled(true);
+	}
+
+	if(Misc.isEither(base, "/msg", "/tell")) {
+	    if (split.length < 3) {
+		Messaging.send("&cCorrect usage is: /msg [player] [message]");
+		return;
+	    }
+
+	    if (isAFK(player)) {
+		Messaging.send("&7This player is currently away.");
+	    }
+
+	    Player who = Misc.playerMatch(split[1]);
+
+	    if (who != null) {
+		if (who.getName().equals(player.getName())) {
+		    Messaging.send("&cYou can't message yourself!");
+		    return;
+		}
+
+		Messaging.send("(MSG) <" + player.getName() + "> " + Misc.combineSplit(2, split, " "));
+		Messaging.send(who, "(MSG) <" + player.getName() + "> " + Misc.combineSplit(2, split, " "));
+	    } else {
+		Messaging.send("&cCouldn't find player " + split[1]);
+	    }
+	}
+
+	if(Misc.isEither(base, "/afk", "/away")) {
+	    if (isAFK(player)) {
+		Messaging.send("&7You have been marked as back.");
+		unAFK(player);
+	    } else {
+		Messaging.send("&7You are now currently marked as away.");
+		AFK(player);
 	    }
 
 	    event.setCancelled(true);
@@ -240,7 +428,7 @@ public class iListen extends PlayerListener {
 	if(Misc.isEither(base, "/playerlist", "/online")) {
 	    if(p.getServer().getOnlinePlayers() == null) {
 		Messaging.send(" ");
-		Messaging.send("&e Players &fcurrently&e online:");
+		Messaging.send("&ePlayers &fcurrently&e online:");
 		Messaging.send("&f - Just you.");
 		Messaging.send(" ");
 		event.setCancelled(true);
@@ -401,6 +589,7 @@ public class iListen extends PlayerListener {
 	    Messaging.send("&f------------------------------------------------"    );
 	    Messaging.send("&6  Username: &f" + current.getName() + " ["+bar+"&f]" );
 	    Messaging.send("&6    -&e Location: &f" + location                     );
+	    Messaging.send("&6    -&e Status: &f" + ((isAFK(current)) ? "afk" : "around"));
 	    Messaging.send("&f------------------------------------------------"    );
 	    event.setCancelled(true);
 	}

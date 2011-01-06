@@ -3,7 +3,7 @@ package com.nijikokun.bukkit;
 import org.bukkit.Player;
 
 /**
- * iConomy v1.x
+ * General 1.1 & Code from iConomy 2.x
  * Copyright (C) 2011  Nijikokun <nijikokun@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -67,7 +67,7 @@ public class Messaging {
      * @return <code>String</code> - The parsed string after conversion.
      */
     public static String parse(String original) {
-	return original.replaceAll("(&([a-z0-9]))", "§$2").replace("\\\\\u00A7", "&");
+	return colorize(original.replaceAll("(&([a-z0-9]))", "§$2").replace("\\\\\u00A7", "&"));
     }
 
     /**

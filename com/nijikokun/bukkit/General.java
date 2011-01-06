@@ -1,7 +1,7 @@
 package com.nijikokun.bukkit;
 
 import java.io.File;
-import java.util.HashMap;
+import java.io.IOException;
 import org.bukkit.Player;
 import org.bukkit.Server;
 import org.bukkit.event.Event.Priority;
@@ -10,8 +10,8 @@ import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.PluginLoader;
 import org.bukkit.plugin.java.JavaPlugin;
 
-/*
- * iConomy v2.0 - Official `LightWeight` Version
+/**
+ * General 1.1 & Code from iConomy 2.x
  * Copyright (C) 2011  Nijikokun <nijikokun@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -65,6 +65,8 @@ public class General extends JavaPlugin {
      */
     public static iProperty Settings, Logging;
 
+    public static File Motd;
+
     /*
      * Variables
      */
@@ -85,11 +87,18 @@ public class General extends JavaPlugin {
     public void onEnable() {
 	(new File(directory)).mkdir();
 	Settings = new iProperty(directory + "general.settings");
+	Motd = new File(directory + "general.motd");
+
+	try {
+	    Motd.createNewFile();
+	} catch (IOException ex) { }
+	
 	setupPermissions();
     }
 
     private void registerEvents() {
         getServer().getPluginManager().registerEvent(Event.Type.PLAYER_COMMAND, l, Priority.Highest, this);
+        getServer().getPluginManager().registerEvent(Event.Type.PLAYER_JOIN, l, Priority.Highest, this);
     }
 
     public boolean isDebugging(final Player player) {
