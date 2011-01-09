@@ -138,6 +138,9 @@ public class Misc {
 	    if(needle.getName().equals(name)) {
 		player = needle;
 		break;
+	    } else if(needle.getDisplayName().equals(name)) {
+		player = needle;
+		break;
 	    }
 	}
 
@@ -154,15 +157,18 @@ public class Misc {
 	
 	Player[] online = iListen.plugin.getServer().getOnlinePlayers();
         Player lastPlayer = null;
-        name = name.toLowerCase();
 
         for (Player player : online) {
             String playerName = player.getName();
+            String playerDisplayName = player.getDisplayName();
 
-            if (playerName.toLowerCase().equals(name)) {
+            if (playerName.equalsIgnoreCase(name)) {
                 lastPlayer = player;
                 break;
-            }
+            } else if(playerDisplayName.equalsIgnoreCase(name)) {
+		lastPlayer = player;
+		break;
+	    }
 
             if (playerName.toLowerCase().indexOf(name.toLowerCase()) != -1) {
                 if (lastPlayer != null) {
@@ -170,11 +176,17 @@ public class Misc {
                 }
 
                 lastPlayer = player;
-            }
+            } else if(playerDisplayName.toLowerCase().indexOf(name.toLowerCase()) != -1) {
+		if(lastPlayer != null) {
+		    return null;
+		}
+
+		lastPlayer = player;
+	    }
         }
 
         return lastPlayer;
-    }
+   }
 
    public static String combineSplit(int startIndex, String[] string, String seperator) {
         StringBuilder builder = new StringBuilder();

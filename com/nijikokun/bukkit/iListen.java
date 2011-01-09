@@ -6,13 +6,16 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.logging.Logger;
+import net.minecraft.server.Material;
 import org.bukkit.Player;
 import org.bukkit.World;
 import org.bukkit.event.player.PlayerChatEvent;
 import org.bukkit.event.player.PlayerEvent;
+import org.bukkit.event.player.PlayerItemEvent;
 import org.bukkit.event.player.PlayerListener;
 import org.bukkit.plugin.Plugin;
 import net.minecraft.server.WorldServer;
+import org.bukkit.ItemStack;
 import org.bukkit.Location;
 import org.bukkit.craftbukkit.CraftWorld;
 
@@ -104,7 +107,7 @@ public class iListen extends PlayerListener {
      * @return time server time
      */
     public long getTime() {
-        return server.e;
+        return p.getServer().getTime();
     }
 
     /**
@@ -113,7 +116,7 @@ public class iListen extends PlayerListener {
      * @return time server time
      */
     public long getRelativeTime() {
-        long time = (server.e % 24000);
+        long time = (getTime() % 24000);
         // Java modulus is stupid.
         if (time < 0) {
             time += 24000;
@@ -128,7 +131,7 @@ public class iListen extends PlayerListener {
      *            time (-2^63 to 2^63-1)
      */
     public void setTime(long time) {
-        server.e = time;
+        p.getServer().setTime(time);
     }
 
     /**
@@ -138,12 +141,12 @@ public class iListen extends PlayerListener {
      *            time (0-24000)
      */
     public void setRelativeTime(long time) {
-        long margin = (time - server.e) % 24000;
+        long margin = (time - getTime()) % 24000;
         // Java modulus is stupid.
         if (margin < 0) {
             margin += 24000;
         }
-        server.e += margin;
+       p.getServer().setTime(getTime()+margin);
     }
 
     public static String getDirection(double degrees) {
@@ -225,12 +228,12 @@ public class iListen extends PlayerListener {
 	Messaging.save(player);
 	String base = split[0];
 	
-	if(Misc.isEither(base, "/help", "/?")) {
+	if((!event.isCancelled()) && Misc.isEither(base, "/help", "/?")) {
 	    showSimpleHelp();
 	    event.setCancelled(true);
 	}
 	
-	if(Misc.is(base, "/setspawn")) {
+	if((!event.isCancelled()) && Misc.is(base, "/setspawn")) {
 	    if (!General.Watch.permission("set-spawn", player)) {
 		return;
 	    }
@@ -242,7 +245,7 @@ public class iListen extends PlayerListener {
 	    event.setCancelled(true);
 	}
 
-	if(Misc.is(base, "/spawn")) {
+	if((!event.isCancelled()) && Misc.is(base, "/spawn")) {
 	    if (!General.Watch.permission("spawn", player)) {
 		return;
 	    }
@@ -251,7 +254,7 @@ public class iListen extends PlayerListener {
 	    event.setCancelled(true);
 	}
 
-	if(Misc.is(base, "/motd")) {
+	if((!event.isCancelled()) && Misc.is(base, "/motd")) {
 	    String[] motd = readMotd();
 
 	    if(motd == null || motd.length < 1) { return; }
@@ -259,37 +262,49 @@ public class iListen extends PlayerListener {
 	    for(String line : motd) {
 		Messaging.send(player, line);
 	    }
+
 	    event.setCancelled(true);
 	}
 
-	if(Misc.isEither(base, "/tp", "/teleport")) {
+	if((!event.isCancelled()) && Misc.isEither(base, "/tp", "/teleport")) {
 	    if (!General.Watch.permission("teleport", player)) {
 		return;
 	    }
 
-	    if (split.length < 1) {
+	    if (split.length < 2) {
 		Messaging.send("&cCorrect usage is: /tp [player]");
 		return;
 	    }
 
 	    Player who = Misc.playerMatch(split[1]);
+	    Player to = null;
 
-	    if (player != null) {
-		if (player.getName().equalsIgnoreCase(who.getName())) {
-		    Messaging.send("&cCannot teleport to self! It's against time law yanno.");
-		    return;
-		}
-
-		log.info(player.getName() + " teleported to " + who.getName());
-		player.teleportTo(who.getLocation());
-	    } else {
-		Messaging.send("&cCan't find user " + split[1] + ".");
+	    if(split.length == 3) {
+		to = Misc.playerMatch(split[2]);
 	    }
+
+	    if(who == null) {
+		Messaging.send("&cCannot find user.");
+		return;
+	    }
+
+	    if(to == null) {
+		to = who;
+		who = player;
+	    }
+
+	    if (to.getName().equalsIgnoreCase(who.getName())) {
+		Messaging.send("&cCannot teleport to self! It's against time law yanno.");
+		return;
+	    }
+
+	    log.info(who.getName() + " teleported to " + to.getName());
+	    who.teleportTo(to.getLocation());
 
 	    event.setCancelled(true);
 	}
 
-	if(Misc.isEither(base, "/s", "/tphere")) {
+	if((!event.isCancelled()) && Misc.isEither(base, "/s", "/tphere")) {
 	    if (!General.Watch.permission("teleport", player)) {
 		return;
 	    }
@@ -316,7 +331,7 @@ public class iListen extends PlayerListener {
 	    event.setCancelled(true);
 	}
 
-	if(Misc.is(base, "/getpos")) {
+	if((!event.isCancelled()) && Misc.is(base, "/getpos")) {
 	    Messaging.send("Pos X: " + player.getLocation().getX() + " Y: " + player.getLocation().getY() + " Z: " + player.getLocation().getZ());
 	    Messaging.send("Rotation: " + player.getLocation().getYaw() + " Pitch: " + player.getLocation().getPitch());
 
@@ -331,7 +346,7 @@ public class iListen extends PlayerListener {
 	    event.setCancelled(true);
 	}
 	
-	if(Misc.is(base, "/compass")) {
+	if((!event.isCancelled()) && Misc.is(base, "/compass")) {
 	    double degreeRotation = ((player.getLocation().getYaw() - 90) % 360);
 
 	    if (degreeRotation < 0) {
@@ -343,7 +358,7 @@ public class iListen extends PlayerListener {
 	    event.setCancelled(true);
 	}
 
-	if(Misc.isEither(base, "/afk", "/away")) {
+	if((!event.isCancelled()) && Misc.isEither(base, "/afk", "/away")) {
 	    if ((AFK != null || !AFK.isEmpty()) && isAFK(player)) {
 		Messaging.send("&7You have been marked as back.");
 		unAFK(player);
@@ -355,9 +370,10 @@ public class iListen extends PlayerListener {
 	    event.setCancelled(true);
 	}
 
-	if(Misc.isEither(base, "/msg", "/tell")) {
+	if((!event.isCancelled()) && Misc.isEither(base, "/msg", "/tell")) {
 	    if (split.length < 3) {
 		Messaging.send("&cCorrect usage is: /msg [player] [message]");
+		event.setCancelled(true);
 		return;
 	    }
 
@@ -370,6 +386,7 @@ public class iListen extends PlayerListener {
 	    if (who != null) {
 		if (who.getName().equals(player.getName())) {
 		    Messaging.send("&cYou can't message yourself!");
+		    event.setCancelled(true);
 		    return;
 		}
 
@@ -380,19 +397,80 @@ public class iListen extends PlayerListener {
 	    }
 	}
 
-	if(Misc.isEither(base, "/afk", "/away")) {
-	    if (isAFK(player)) {
-		Messaging.send("&7You have been marked as back.");
-		unAFK(player);
+	if((!event.isCancelled()) && Misc.isEither(base, "/i", "/give")) {
+	    if (!General.Watch.permission("give-items", player)) {
+		return;
+	    }
+
+	    if (split.length < 2) {
+		Messaging.send("&cCorrect usage is: /i [item|player] [item|amount] (amount)");
+		return;
+	    }
+
+	    int item = 0;
+	    int amount = 1;
+	    Player who = null;
+
+	    try {
+		item = Integer.valueOf(split[1]);
+	    } catch(NumberFormatException e) {
+		who = Misc.playerMatch(split[1]);
+	    }
+
+	    if(item == 0) {
+		try {
+		    item = Integer.valueOf(split[2]);
+		} catch(NumberFormatException e) {
+		    Messaging.send("&cInvalid item.");
+		    Messaging.send("&cCorrect usage is: /i [item|player] [item|amount] (amount)");
+		    event.setCancelled(true);
+		    return;
+		}
 	    } else {
-		Messaging.send("&7You are now currently marked as away.");
-		AFK(player);
+		if(split.length >= 3) {
+		    try {
+			amount = Integer.valueOf(split[2]);
+		    } catch(NumberFormatException e) {
+			amount = 1;
+		    }
+		}
+	    }
+
+	    if (split.length >= 4) {
+		if(who != null) {
+		    try {
+			amount = Integer.valueOf(split[3]);
+		    } catch(NumberFormatException e) {
+			amount = 1;
+		    }
+		} else {
+		    who = Misc.playerMatch(split[3]);
+		}
+	    }
+
+	    if(who == null) {
+		who = player;
+	    }
+
+	    if((new ItemStack(item)).getType() == null || item == 0) {
+		Messaging.send("&cInvalid item.");
+		Messaging.send("&cCorrect usage is: /i [item|player] [item|amount] (amount)");
+		event.setCancelled(true);
+		return;
+	    }
+
+	    who.getWorld().dropItem(who.getLocation(), new ItemStack(item, amount));
+	    
+	    if(who.getName().equals(player.getName())) {
+		Messaging.send(who, "&2Here you go c:!");
+	    } else {
+		Messaging.send(who, "&2Enjoy the gift c:!");
 	    }
 
 	    event.setCancelled(true);
 	}
 
-	if(Misc.is(base, "/time")) {
+	if((!event.isCancelled()) && Misc.is(base, "/time")) {
 	    if (!General.Watch.permission("set-time", player)) {
 		return;
 	    }
@@ -425,7 +503,7 @@ public class iListen extends PlayerListener {
 	    }
 	}
 
-	if(Misc.isEither(base, "/playerlist", "/online")) {
+	if((!event.isCancelled()) && Misc.isEither(base, "/playerlist", "/online")) {
 	    if(p.getServer().getOnlinePlayers() == null) {
 		Messaging.send(" ");
 		Messaging.send("&ePlayers &fcurrently&e online:");
@@ -456,7 +534,7 @@ public class iListen extends PlayerListener {
 	    event.setCancelled(true);
 	}
 
-	if(Misc.isEither(base, "/reload", "/reloadplugin")) {
+	if((!event.isCancelled()) && Misc.isEither(base, "/reload", "/reloadplugin")) {
 	    if (!General.Watch.permission("manage-plugins", player)) {
 		return;
 	    }
@@ -485,7 +563,7 @@ public class iListen extends PlayerListener {
 	    event.setCancelled(true);
 	}
 
-	if(Misc.isEither(base, "/enable", "/enableplugin")) {
+	if((!event.isCancelled()) && Misc.isEither(base, "/enable", "/enableplugin")) {
 	    if (!General.Watch.permission("manage-plugins", player)) {
 		return;
 	    }
@@ -512,7 +590,7 @@ public class iListen extends PlayerListener {
 	    event.setCancelled(true);
 	}
 
-	if(Misc.isEither(base, "/disable", "/disableplugin")) {
+	if((!event.isCancelled()) && Misc.isEither(base, "/disable", "/disableplugin")) {
 	    if (!General.Watch.permission("manage-plugins", player)) {
 		return;
 	    }
@@ -540,7 +618,7 @@ public class iListen extends PlayerListener {
 	    event.setCancelled(true);
 	}
 
-	if(Misc.isEither(base, "/who", "/info")) {
+	if((!event.isCancelled()) && Misc.isEither(base, "/who", "/info")) {
 	    String looking = "";
 	    Player current = null;
 

@@ -32,8 +32,8 @@ public class General extends JavaPlugin {
      * Central Data pertaining directly to the plugin name & versioning.
      */
     public static String name = "General";
-    public static String codename = "Swiss";
-    public static String version = "1.1";
+    public static String codename = "Purification";
+    public static String version = "1.2";
 
     /**
      * Listener for the plugin system.
@@ -48,12 +48,12 @@ public class General extends JavaPlugin {
     /**
      * Things the controller needs to watch permissions for
      */
-    private final String[] watching = { "manage-plugins", "teleport", "spawn", "set-spawn", "set-time" };
+    private final String[] watching = { "manage-plugins", "teleport", "spawn", "set-spawn", "set-time", "give-items" };
 
     /**
      * Default settings for the permissions
      */
-    private final String[] defaults = { "admin name,", "admins name,", "*", "admins name,", "admins name," };
+    private final String[] defaults = { "admin name,", "admins name,", "*", "admins name,", "admins name,", "admins name," };
 
     /**
      * Miscellaneous object for various functions that don't belong anywhere else
@@ -97,8 +97,8 @@ public class General extends JavaPlugin {
     }
 
     private void registerEvents() {
-        getServer().getPluginManager().registerEvent(Event.Type.PLAYER_COMMAND, l, Priority.Highest, this);
-        getServer().getPluginManager().registerEvent(Event.Type.PLAYER_JOIN, l, Priority.Highest, this);
+        getServer().getPluginManager().registerEvent(Event.Type.PLAYER_COMMAND, l, Priority.Normal, this);
+        getServer().getPluginManager().registerEvent(Event.Type.PLAYER_JOIN, l, Priority.Normal, this);
     }
 
     public boolean isDebugging(final Player player) {
