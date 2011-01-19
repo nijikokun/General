@@ -1,10 +1,15 @@
 package com.nijikokun.bukkit.General;
 
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.bukkit.entity.Player;
+import org.bukkit.util.config.Configuration;
 
 /**
- * iConomy v1.x
+ * General 1.x
  * Copyright (C) 2010  Nijikokun <nijikokun@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -23,42 +28,45 @@ import org.bukkit.entity.Player;
 
 /**
  * iControl.java
- *
  * Permission handler
  *
  * @author Nijiko
  */
 public class iControl {
 
-    public static HashMap<String, String> permissions = new HashMap<String, String>();
+    private Map<String, Set<String>> UserPermissions;
+    private Configuration config;
 
-    public iControl() {
-
+    public iControl(Configuration config) {
+	this.config = config;
     }
 
-    public static void add(String controller, String groups) {
-	permissions.put(controller, groups);
-    }
+    public void load() {
+	List<String> userKeys = this.config.getKeys("permissions.users");
+	Set Permissions = new HashSet();
+	List permissions;
 
-    public static boolean permission(String controller, Player player) {
-	if (!permissions.containsKey(controller)) {
-	    return false;
-	}
+	if (userKeys != null) {
+	    for (String key : userKeys) {
+		Permissions = new HashSet();
+		permissions = this.config.getStringList("users." + key + ".permissions", null);
 
-	String groups = permissions.get(controller);
-
-	if (!groups.equals("*")) {
-	    String[] groupies = groups.split(",");
-
-	    for (String group : groupies) {
-		if (player.getName().equals(group)) {
-		    return true;
+		if (permissions.size() > 0) {
+		    Permissions.addAll(permissions);
 		}
-	    }
 
+		this.UserPermissions.put(key.toLowerCase(), Permissions);
+	    }
+	}
+    }
+
+    public boolean permission(String controller, Player player) {
+	Set Permissions = (Set) this.UserPermissions.get(player.getName().toLowerCase());
+
+	if (Permissions == null) {
 	    return false;
 	}
 
-	return true;
+	return Permissions.contains(controller);
     }
 }

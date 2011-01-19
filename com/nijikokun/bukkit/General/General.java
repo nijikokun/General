@@ -1,19 +1,26 @@
 package com.nijikokun.bukkit.General;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Logger;
-import org.bukkit.entity.Player;
 import org.bukkit.Server;
 import org.bukkit.event.Event.Priority;
 import org.bukkit.event.Event;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.PluginLoader;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.util.config.Configuration;
+import com.nijiko.ConfigurationHandler;
+import com.nijiko.DefaultConfiguration;
 
 /**
  * General 1.1 & Code from iConomy 2.x
@@ -42,8 +49,8 @@ public class General extends JavaPlugin {
      * Central Data pertaining directly to the plugin name & versioning.
      */
     public static String name = "General";
-    public static String codename = "Yager";
-    public static String version = "1.5";
+    public static String codename = "Ninja";
+    public static String version = "1.8";
 
     /**
      * Listener for the plugin system.
@@ -53,7 +60,7 @@ public class General extends JavaPlugin {
     /**
      * Controller for permissions and security.
      */
-    public static iControl Watch = new iControl();
+    public static iControl Watch;
 
     /**
      * Things the controller needs to watch permissions for
@@ -70,21 +77,176 @@ public class General extends JavaPlugin {
      */
     public static Misc Misc = new Misc();
 
-    /**
+    /*
      * Internal Properties controllers
      */
-    public static iProperty Settings, Items, Logging;
-
+    public static iProperty OldSettings, Items, Logging;
+    private final DefaultConfiguration config;
     public static File Motd;
 
     /*
      * Variables
      */
     public static String directory = "General" + File.separator, spawn = "";
-    public static HashMap<Integer, String> items;
+    public static HashMap<String, String> items;
+    public static boolean health = true, coords = true, commands = true;
 
     public General(PluginLoader pluginLoader, Server instance, PluginDescriptionFile desc, File folder, File plugin, ClassLoader cLoader) {
         super(pluginLoader, instance, desc, folder, plugin, cLoader);
+
+	// Start Registration
+	folder.mkdirs();
+
+	// Convert to new format.
+	if((new File(directory)).exists()) {
+	    log.info("[General] Attempting to convert...");
+
+	    // New Configuration file.
+	    DefaultConfiguration("config.yml");
+
+	    // Setup
+	    File GeneralDirectory = (new File(directory));
+	    File YAMLSettings = (new File(getDataFolder(), "config.yml"));
+	    File GeneralSettings = (new File(directory, "general.settings"));
+	    File Motd = (new File(directory, "general.motd"));
+	    File Help = (new File(directory, "general.help"));
+	    
+	    if(GeneralSettings.exists()) {
+		OldSettings = new iProperty(directory + "general.settings");
+
+		try {
+		    log.info("[General] Converting settings..");
+		    Map mappedItems = OldSettings.returnMap();
+
+		    HashMap<String, Set<String>> YMLPermissions = new HashMap<String, Set<String>>();
+		    HashMap<String, String> YMLSettings = new HashMap<String, String>();
+
+		    for (Object k : mappedItems.keySet()) {
+			String key = (String)k;
+			String value = (String)mappedItems.get(key);
+			boolean found = false;
+
+			for (String perm : watching) {
+			    if(key.equalsIgnoreCase("can-" + perm)) {
+				if(value.contains(",")) {
+				    String[] players = value.split(",");
+
+				    for(String player : players) {
+					player = player.replace(",", "");
+
+					if(YMLPermissions.containsKey(player.toLowerCase())) {
+					    YMLPermissions.get(player.toLowerCase()).add(perm);
+					} else {
+					    YMLPermissions.put(player.toLowerCase(), (new HashSet<String>()));
+					    YMLPermissions.get(player.toLowerCase()).add(perm);
+					}
+				    }
+
+				    found = true;
+				    break;
+				} else if(value.equals("*")) {
+				    found = true;
+				    break;
+				}
+
+				found = true;
+				break;
+			    }
+			}
+
+			if(!found) {
+			    if(key.equals("who-show-health")) {
+				key = "playerlist,show-health";
+			    } else if(key.equals("who-show-coords")) {
+				key = "playerlist,show-coords";
+			    } else if(key.equals("inject-help-commands")) {
+				key = "help,inject-commands";
+			    }
+
+			    YMLSettings.put(key, value);
+			}
+		    }
+
+		    try {
+			PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(YAMLSettings)), true);
+			boolean pl = false;
+			boolean hl = false;
+
+			// Start with the settings
+			for (Object k : YMLSettings.keySet()) {
+			    String key = (String)k;
+			    String value = (String)YMLSettings.get(key);
+			    key += ",";
+			    String[] keys = key.split(",");
+			    int i = 0;
+
+			    if((keys[0].equals("help") && !hl) || (keys[0].equals("playerlist") && !pl)) {
+				if(keys[0].equals("help")) { hl = true; }
+				if(keys[0].equals("playerlist")) { pl = true; }
+				out.println(keys[0] + ":");
+			    }
+
+			    if(keys[1].equals("show-health") || keys[1].equals("show-coords") || keys[1].equals("inject-commands")) {
+				out.println(Misc.repeat(' ', 4) + keys[1] + ": " + value);
+			    }
+			}
+
+			out.println("");
+			out.println("users:");
+
+			// Start with the settings
+			for (Object ks : YMLPermissions.keySet()) {
+			    String key = (String)ks;
+			    Set<String> perms = YMLPermissions.get(key);
+
+			    int i = 0;
+
+			    out.println(Misc.repeat(' ', 4) + key+":");
+
+			    for(String k : perms) {
+				out.println(Misc.repeat(' ', 8) + " - " + k);
+			    }
+			}
+
+			out.close();
+		    } catch (IOException e) {
+			log.info("Could not create config.yml from settings!");
+		    }
+
+		    log.info("[General] Converted settings to yml file.. hopefully.");
+		} catch (Exception ex) {
+		    log.info("[General] An error occured: " + ex);
+		}
+
+		log.info("[General] Deleting old file...");
+		GeneralSettings.setWritable(true);
+		GeneralSettings.delete();
+		log.info("[General] File deleted...");
+	    }
+
+	    if(Motd.exists()) {
+		log.info("[General] Moving Motd...");
+		Motd.setWritable(true);
+		Motd.renameTo(new File(getDataFolder(), Motd.getName()));
+		log.info("[General] Move completed.");
+	    }
+
+	    if(Help.exists()) {
+		log.info("[General] Moving Help...");
+		Help.setWritable(true);
+		Help.renameTo(new File(getDataFolder(), Help.getName()));
+		log.info("[General] Move completed.");
+	    }
+
+	    log.info("[General] Removing old diretory...");
+	    GeneralDirectory.setWritable(true);
+	    GeneralDirectory.delete();
+	    log.info("[General] Conversion complete!");
+	}
+
+	this.config = new ConfigurationHandler(getConfiguration());
+	getConfiguration().load();
+	this.config.load();
 
         registerEvents();
 
@@ -96,15 +258,14 @@ public class General extends JavaPlugin {
     }
 
     public void onEnable() {
-	(new File(directory)).mkdir();
-	Settings = new iProperty(directory + "general.settings");
-	Motd = new File(directory + "general.motd");
+	Motd = new File(getDataFolder() + File.separator + "general.motd");
 	Items = new iProperty("items.db");
 
 	try {
 	    Motd.createNewFile();
 	} catch (IOException ex) { }
 
+	// Setup
 	setupCommands();
 	registerCommands();
 	setupPermissions();
@@ -130,23 +291,24 @@ public class General extends JavaPlugin {
     }
 
     public void registerCommands() {
-	l.save_custom_command("&f/playerlist or /online &6-&e lists players online.");
-	l.save_custom_command("&f/enable|disable|reload [plugin] &6-&e Manage plugins");
-	l.save_custom_command("&f/who (player) &6-&e Player information.");
-	l.save_custom_command("&f/spawn &6-&e Return to spawn");
-	l.save_custom_command("&f/setspawn &6-&e Change spawn to where you are");
-	l.save_custom_command("&f/time (day|night|raw) &6-&e Change the time");
-	l.save_custom_command("&f/me &6-&e Emote your messages");
-	l.save_custom_command("&f/afk &6-&e Go away or come back");
-	l.save_custom_command("&f/message|tell|m [player] [message] &6-&e Private msg");
-	l.save_custom_command("&f/compass|getpos &6-&e information about position");
-	l.save_custom_command("&f/help or /? &6-&e Returns this documentation");
+	if(commands) {
+	    l.register_custom_command("&f/online|playerlist|who &6-&e Shows player list.");
+	    l.register_custom_command("&f/online|playerlist|who [player] &6-&e Shows player info.");
+	    l.register_custom_command("&f/spawn &6-&e Return to spawn");
+	    l.register_custom_command("&f/setspawn &6-&e Change spawn to where you are.");
+	    l.register_custom_command("&f/time help &6-&e for more information.");
+	    l.register_custom_command("&f/me &6-&e Emote your messages");
+	    l.register_custom_command("&f/afk (message) &6-&e Go away or come back");
+	    l.register_custom_command("&f/i|give [item|player] (item|amount) (amount) &6-&e Give items.");
+	    l.register_custom_command("&f/message|tell|m [player] [message] &6-&e Private msg");
+	    l.register_custom_command("&f/compass|getpos &6-&e information about position");
+	    l.register_custom_command("&f/help or /? &6-&e Returns this documentation");
+	}
     }
 
     public void setupPermissions() {
-	for(int x = 0; x < watching.length; x++) {
-	    Watch.add(watching[x], Settings.getString("can-" + watching[x], defaults[x]));
-	}
+	Watch = new iControl(getConfiguration());
+	Watch.load();
     }
 
     /**
@@ -154,7 +316,7 @@ public class General extends JavaPlugin {
      */
     public void setupItems() {
 	Map mappedItems = null;
-	items = new HashMap<Integer, String>();
+	items = new HashMap<String, String>();
 
 	try {
 	    mappedItems = Items.returnMap();
@@ -164,11 +326,17 @@ public class General extends JavaPlugin {
 
 	if(mappedItems != null) {
 	    for (Object item : mappedItems.keySet()) {
-		int id = Integer.valueOf((String)item);
+		String id = (String)item;
 		String itemName = (String) mappedItems.get(item);
 
 		items.put(id, itemName);
 	    }
 	}
+    }
+
+    private void DefaultConfiguration(String name) {
+	try {
+	    (new File(getDataFolder(), name)).createNewFile();
+	} catch (IOException ex) { }
     }
 }

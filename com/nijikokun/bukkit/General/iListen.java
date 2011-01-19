@@ -16,6 +16,8 @@ import org.bukkit.World;
 import org.bukkit.event.player.PlayerChatEvent;
 import org.bukkit.event.player.PlayerEvent;
 import org.bukkit.event.player.PlayerListener;
+import org.bukkit.plugin.InvalidDescriptionException;
+import org.bukkit.plugin.InvalidPluginException;
 import org.bukkit.plugin.Plugin;
 import net.minecraft.server.WorldServer;
 import org.bukkit.Location;
@@ -53,22 +55,14 @@ import org.bukkit.inventory.ItemStack;
 public class iListen extends PlayerListener {
 
     private static final Logger log = Logger.getLogger("Minecraft");
+    private ArrayList<String> lines = new ArrayList<String>();
 
-    /**
-     * Miscellaneous object for various functions that don't belong anywhere else
+    /*
+     * Miscellaneous things required.
      */
     public Misc Misc = new Misc();
-
-    /**
-     * AFK
-     */
     public HashMap<Player, String> AFK = new HashMap<Player, String>();
-
-    /**
-     * Commands
-     */
     public List<String> Commands = new ArrayList<String>();
-
     public static General plugin;
     public WorldServer server;
 
@@ -86,48 +80,25 @@ public class iListen extends PlayerListener {
 	return new Location(player.getWorld(), x, y, z, rotX, rotY);
     }
 
-    /**
-     * Returns actual server time (-2^63 to 2^63-1)
-     *
-     * @return time server time
-     */
     public long getTime() {
         return plugin.getServer().getTime();
     }
 
-    /**
-     * Returns current server time (0-24000)
-     *
-     * @return time server time
-     */
     public long getRelativeTime() {
-        long time = (getTime() % 24000);
-        // Java modulus is stupid.
-        if (time < 0) {
-            time += 24000;
-        }
-        return time;
+        return (getTime() % 24000);
+    }
+    
+    public long getStartTime() {
+        return (getTime()-getRelativeTime());
     }
 
-    /**
-     * Sets the actual server time
-     *
-     * @param time
-     *            time (-2^63 to 2^63-1)
-     */
     public void setTime(long time) {
         plugin.getServer().setTime(time);
     }
 
-    /**
-     * Sets the current server time
-     *
-     * @param time
-     *            time (0-24000)
-     */
-    public void setRelativeTime(long time) {
+    private void setRelativeTime(long time) {
         long margin = (time-getTime()) % 24000;
-        // Java modulus is stupid.
+
         if (margin < 0) {
             margin += 24000;
         }
@@ -135,7 +106,48 @@ public class iListen extends PlayerListener {
         plugin.getServer().setTime(getTime()+margin);
     }
 
-    public static String getDirection(double degrees) {
+    protected boolean teleport(String who, String to) {
+        Player destination = Misc.playerMatch(to);
+
+        if (who.equalsIgnoreCase("*")) {
+            Player[] players = plugin.getServer().getOnlinePlayers();
+
+            for (Player player : players) {
+                if (!player.equals(destination)) {
+                    player.teleportTo(destination.getLocation());
+                }
+            }
+
+            return true;
+        } else if (who.contains(",")) {
+            String[] players = who.split(",");
+
+            for (String name : players) {
+                Player player = Misc.playerMatch(name);
+
+		if ((player == null) || (destination == null)) {
+		    continue;
+		} else {
+		    if (!player.equals(destination)) {
+			player.teleportTo(destination.getLocation());
+		    }
+		}
+            }
+
+            return true;
+        } else {
+            Player player = Misc.playerMatch(who);
+
+            if ((player == null) || (destination == null)) {
+                return false;
+            } else {
+                player.teleportTo(destination.getLocation());
+                return true;
+            }
+        }
+    }
+
+    private String getDirection(double degrees) {
         if (0 <= degrees && degrees < 22.5) {
             return "N";
         } else if (22.5 <= degrees && degrees < 67.5) {
@@ -172,28 +184,30 @@ public class iListen extends PlayerListener {
     }
 
     public String[] readMotd() {
-	ArrayList<String> lines = new ArrayList<String>();
+	ArrayList<String> motd = new ArrayList<String>();
 
 	try {
-	    BufferedReader in = new BufferedReader(new FileReader(General.directory + "general.motd"));
+	    BufferedReader in = new BufferedReader(new FileReader(plugin.getDataFolder() + File.separator +  "general.motd"));
 	    String str;
 	    while ((str = in.readLine()) != null) {
-		lines.add(str);
+		motd.add(str);
 	    }
 	    in.close();
 	} catch (IOException e) { }
 
-	return lines.toArray(new String[]{});
+	return motd.toArray(new String[]{});
     }
 
     public String[] read_commands() {
-	ArrayList<String> lines = new ArrayList<String>();
-
 	try {
-	    BufferedReader in = new BufferedReader(new FileReader(General.directory + "general.help"));
+	    BufferedReader in = new BufferedReader(new FileReader(plugin.getDataFolder() + File.separator + "general.help"));
 	    String str;
 	    while ((str = in.readLine()) != null) {
-		lines.add(str);
+		if(!lines.contains(str)) {
+		    lines.add(str);
+		} else {
+		    continue;
+		}
 	    }
 	    in.close();
 	} catch (IOException e) { }
@@ -214,7 +228,7 @@ public class iListen extends PlayerListener {
 	Messaging.send("&dHelp &f(&dPage &f" + (page != 0 ? page : "1") + "&d of&f " + (int)Math.ceil((double)commands.length/7D) + "&d) [] = required, () = optional:");
 
 	try {
-	    for (int i = page; i < amount + 7; i++) {
+	    for (int i = amount; i < amount + 7; i++) {
 		if (commands.length > i) {
 		    Messaging.send(commands[i]);
 		}
@@ -225,56 +239,34 @@ public class iListen extends PlayerListener {
     }
 
     public void register_command(String command, String help) {
-	if(!Commands.contains(command + help)) {
-	    Commands.add(command + help);
+	if(!Commands.contains(command.replace("|", "&5|&f") + help)) {
+	    Commands.add(command.replace("|", "&5|&f") + help);
+	}
+    }
+
+    public void register_custom_command(String command) {
+	if(!Commands.contains(command)) {
+	    Commands.add(command);
 	}
     }
 
     public void save_command(String command, String help) {
-	if(!Commands.contains(command + " &6-&e " + help)) {
-	    Commands.add(command + " &6-&e " + help);
-
-	    File file = new File(General.directory + "general.help");
-
-	    try {
-		PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(file)), true);
-
-		for (int i = 0; i < Commands.size(); i++) {
-		    out.println((String) Commands.get(i));
-		}
-
-		out.close();
-	    } catch (IOException e) {
-		General.log.info("Could not write to help registry!");
-	    }
+	if(!Commands.contains(command + " &5-&3 " + help)) {
+	    Commands.add(command + " &5-&3 " + help);
 	}
     }
 
     public void save_custom_command(String command) {
 	if(!Commands.contains(command)) {
 	    Commands.add(command);
-
-	    File file = new File(General.directory + "general.help");
-
-	    try {
-		PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(file)), true);
-
-		for (int i = 0; i < Commands.size(); i++) {
-		    out.println((String) Commands.get(i));
-		}
-
-		out.close();
-	    } catch (IOException e) {
-		General.log.info("Could not write to help registry!");
-	    }
 	}
     }
 
     public void remove_command(String command, String help) {
-	if(Commands.contains(command + " &6-&e " + help)) {
-	    Commands.remove(command + " &6-&e " + help);
+	if(Commands.contains(command.replace("|", "&5|&f") + " &5-&3 " + help)) {
+	    Commands.remove(command.replace("|", "&5|&f") + " &5-&3 " + help);
 	} else {
-	    General.log.info("Help command registry does not contain "+command+" to remove!");
+	   // General.log.info("Help command registry does not contain "+command+" to remove!");
 	}
     }
 
@@ -282,7 +274,7 @@ public class iListen extends PlayerListener {
 	if(Commands.contains(command_line)) {
 	    Commands.remove(command_line);
 	} else {
-	    General.log.info("Help command registry does not contain "+command_line+" to remove!");
+	    // General.log.info("Help command registry does not contain "+command_line+" to remove!");
 	}
     }
 
@@ -310,13 +302,7 @@ public class iListen extends PlayerListener {
 		Messaging.argument(
 		    line,
 		    new String[]{
-			"+dname,+d",
-			"+name,+n",
-			"+location,+l",
-			"+health,+h",
-			"+ip",
-			"+balance",
-			"+online"
+			"+dname,+d", "+name,+n", "+location,+l", "+health,+h", "+ip", "+balance", "+online"
 		    },
 		    new String[]{ 
 			player.getDisplayName(),
@@ -360,9 +346,7 @@ public class iListen extends PlayerListener {
 		}
 	    }
 
-	    print_commands(page);
-
-	    event.setCancelled(true);
+	    print_commands(page); event.setCancelled(true);
 	}
 	
 	if((!event.isCancelled()) && Misc.is(base, "/setspawn")) {
@@ -374,16 +358,14 @@ public class iListen extends PlayerListener {
 	    server.o = (int)Math.ceil(player.getLocation().getZ());
 	    
 	    Messaging.send("&eSpawn position changed to where you are standing.");
-	    event.setCancelled(true);
 	}
 
-	if((!event.isCancelled()) && Misc.is(base, "/spawn")) {
+	if(Misc.is(base, "/spawn")) {
 	    if (!General.Watch.permission("spawn", player)) {
 		return;
 	    }
 
 	    player.teleportTo(spawn(player));
-	    event.setCancelled(true);
 	}
 
 	if((!event.isCancelled()) && Misc.is(base, "/motd")) {
@@ -407,13 +389,7 @@ public class iListen extends PlayerListener {
 		    Messaging.argument(
 			line,
 			new String[]{
-			    "+dname,+d",
-			    "+name,+n",
-			    "+location,+l",
-			    "+health,+h",
-			    "+ip",
-			    "+balance",
-			    "+online"
+			    "+dname,+d", "+name,+n", "+location,+l", "+health,+h", "+ip", "+balance", "+online"
 			},
 			new String[]{
 			    player.getDisplayName(),
@@ -427,49 +403,48 @@ public class iListen extends PlayerListener {
 		    )
 		);
 	    }
-
-	    event.setCancelled(true);
 	}
 
-	if((!event.isCancelled()) && Misc.isEither(base, "/tp", "/teleport")) {
+	if(Misc.isEither(base, "/tp", "/teleport")) {
 	    if (!General.Watch.permission("teleport", player)) {
 		return;
 	    }
 
-	    if (split.length < 2) {
-		Messaging.send("&cCorrect usage is: /tp [player]");
-		return;
+            if (split.length == 2) {
+                String to = split[1];
+
+                if (to.equalsIgnoreCase("*")) {
+                    Messaging.send("&cIncorrect usage of wildchar *");
+                } else if (to.contains(",")) {
+                    Messaging.send("&cIncorrect usage of multiple players.");
+                } else {
+                    if (!teleport(player.getName(), to)) {
+                       Messaging.send("&cCannot find destination player: &f" + to);
+                    }
+                }
+            } else if (split.length == 3) {
+                String who = split[1];
+                String to = split[2];
+
+                if (to.equalsIgnoreCase("*")) {
+                    Messaging.send("&cIncorrect usage of wildchar *");
+		} else if (to.contains(",")) {
+                    Messaging.send("&cIncorrect usage of multiple players.");
+                } else {
+                    if (!teleport(who, to)) {
+                        Messaging.send("&cCould not teleport " + who + " to " + to + ".");
+                    }
+                }
+	    } else {
+		Messaging.send("&c------ &f/tp help&c ------");
+		Messaging.send("&c/tp [player] &f-&c Teleport to a player");
+		Messaging.send("&c/tp [player] [to] &f-&c Teleport player to another player");
+		Messaging.send("&c/tp [player,...] [to] &f-&c Teleport players to another player");
+		Messaging.send("&c/tp * [to] &f-&c Teleport everyone to another player");
 	    }
-
-	    Player who = Misc.playerMatch(split[1]);
-	    Player to = null;
-
-	    if(split.length == 3) {
-		to = Misc.playerMatch(split[2]);
-	    }
-
-	    if(who == null) {
-		Messaging.send("&cCannot find user.");
-		return;
-	    }
-
-	    if(to == null) {
-		to = who;
-		who = player;
-	    }
-
-	    if (to.getName().equalsIgnoreCase(who.getName())) {
-		Messaging.send("&cCannot teleport to self! It's against time law yanno.");
-		return;
-	    }
-
-	    log.info(who.getName() + " teleported to " + to.getName());
-	    who.teleportTo(to.getLocation());
-
-	    event.setCancelled(true);
 	}
 
-	if((!event.isCancelled()) && Misc.isEither(base, "/s", "/tphere")) {
+	if(Misc.isEither(base, "/s", "/tphere")) {
 	    if (!General.Watch.permission("teleport", player)) {
 		return;
 	    }
@@ -492,8 +467,6 @@ public class iListen extends PlayerListener {
 	    } else {
 		Messaging.send("&cCan't find user " + split[1] + ".");
 	    }
-
-	    event.setCancelled(true);
 	}
 
 	if((!event.isCancelled()) && Misc.is(base, "/getpos")) {
@@ -507,11 +480,9 @@ public class iListen extends PlayerListener {
 	    }
 
 	    Messaging.send("Compass: " + getDirection(degreeRotation) + " (" + (Math.round(degreeRotation * 10) / 10.0) + ")");
-
-	    event.setCancelled(true);
 	}
 	
-	if((!event.isCancelled()) && Misc.is(base, "/compass")) {
+	if(Misc.is(base, "/compass")) {
 	    double degreeRotation = ((player.getLocation().getYaw() - 90) % 360);
 
 	    if (degreeRotation < 0) {
@@ -519,11 +490,9 @@ public class iListen extends PlayerListener {
 	    }
 
 	    Messaging.send("&cCompass: " + getDirection(degreeRotation));
-	    
-	    event.setCancelled(true);
 	}
 
-	if((!event.isCancelled()) && Misc.isEither(base, "/afk", "/away")) {
+	if(Misc.isEither(base, "/afk", "/away")) {
 	    if ((AFK != null || !AFK.isEmpty()) && isAFK(player)) {
 		Messaging.send("&7You have been marked as back.");
 		unAFK(player);
@@ -532,25 +501,18 @@ public class iListen extends PlayerListener {
 		String reason = "AFK";
 
 		if(split.length >= 2) {
-		    reason = split[1];
+		    reason = Misc.combineSplit(1, split, " ");
 		}
 
 		AFK(player, reason);
 	    }
-
-	    event.setCancelled(true);
 	}
 
-	if((!event.isCancelled()) && Misc.isEither(base, "/msg", "/tell")) {
+	if(Misc.isEither(base, "/msg", "/tell")) {
 	    if (split.length < 3) {
 		Messaging.send("&cCorrect usage is: /msg [player] [message]");
 		event.setCancelled(true);
 		return;
-	    }
-
-	    if (isAFK(player)) {
-		Messaging.send("&7This player is currently away.");
-		Messaging.send("&7Reason:" + AFK.get(player));
 	    }
 
 	    Player who = Misc.playerMatch(split[1]);
@@ -564,22 +526,26 @@ public class iListen extends PlayerListener {
 
 		Messaging.send("(MSG) <" + player.getName() + "> " + Misc.combineSplit(2, split, " "));
 		Messaging.send(who, "(MSG) <" + player.getName() + "> " + Misc.combineSplit(2, split, " "));
+
+		if (isAFK(who)) {
+		    Messaging.send("&7This player is currently away.");
+		    Messaging.send("&7Reason: " + AFK.get(player));
+		}
 	    } else {
 		Messaging.send("&cCouldn't find player " + split[1]);
 	    }
 	}
 
-	if((!event.isCancelled()) && Misc.isEither(base, "/i", "/give")) {
+	if(Misc.isEither(base, "/i", "/give")) {
 	    if (!General.Watch.permission("give-items", player)) {
 		return;
 	    }
 
 	    if (split.length < 2) {
-		Messaging.send("&cCorrect usage is: /i [item|player] [item|amount] (amount)");
-		return;
+		Messaging.send("&cCorrect usage is: /i [item|player](:type) [item|amount] (amount)"); return;
 	    }
 
-	    int item = 0;
+	    int itemId = 0;
 	    int amount = 1;
 	    int dataType = -1;
 	    Player who = null;
@@ -590,71 +556,59 @@ public class iListen extends PlayerListener {
 
 		    try {
 			dataType = Integer.valueOf(data[1]);
-		    } catch (NumberFormatException e) {
-			dataType = -1;
-		    }
+		    } catch (NumberFormatException e) { dataType = -1; }
 
-		    item = Integer.valueOf(data[0]);
+		    itemId = Items.validate(data[0]);
 		} else {
-		    item = Integer.valueOf(split[1]);
+		    itemId = Items.validate(split[1]);
+		}
+
+		if(itemId == -1) {
+		    who = Misc.playerMatch(split[1]);
 		}
 	    } catch(NumberFormatException e) {
 		who = Misc.playerMatch(split[1]);
 	    }
 
-	    if(item == 0) {
-		String i = "0";
-
-		if(who == null) {
-		    i = split[1];
-		} else {
-		    i = split[2];
-		}
+	    if((itemId == 0 || itemId == -1) && who != null) {
+		String i = split[2];
 
 		if(i.contains(":")) {
 		    String[] data = i.split(":");
 
 		    try {
 			dataType = Integer.valueOf(data[1]);
-		    } catch (NumberFormatException e) {
-			dataType = -1;
-		    }
+		    } catch (NumberFormatException e) { dataType = -1; }
 
 		    i = data[0];
 		}
 
-		try {
-		    item = Integer.valueOf(i);
-		} catch(NumberFormatException e) {
-		    for (int id : General.items.keySet()) {
-			if (General.items.get(id).equalsIgnoreCase(i)) {
-			    item = id;
-			}
-		    }
+		itemId = Items.validate(i);
 
-		    if(item == 0) {
-			Messaging.send("&cInvalid item.");
-			event.setCancelled(true);
-			return;
-		    }
+		if(dataType == -1) {
+		    dataType = Items.validateGrabType(i);
+		}
+	    }
+
+	    if(itemId == -1 || itemId == 0) {
+		Messaging.send("&cInvalid item."); return;
+	    }
+
+	    if(dataType != -1) {
+		if(!Items.validateType(itemId, dataType)) {
+		    Messaging.send("&f"+dataType+"&c is not a valid data type for &f"+Items.name(itemId)+"&c."); return;
 		}
 	    }
 
 	    if(split.length >= 3 && who == null) {
 		try {
 		    amount = Integer.valueOf(split[2]);
-		} catch(NumberFormatException e) {
-		    amount = 1;
-		}
-	    }
-
-	    if (split.length >= 4) {
+		} catch(NumberFormatException e) { amount = 1; }
+	    } else if (split.length >= 4) {
 		if(who != null) {
 		    try {
 			amount = Integer.valueOf(split[3]);
-		    } catch(NumberFormatException e) {
-			amount = 1;
-		    }
+		    } catch(NumberFormatException e) { amount = 1; }
 		} else {
 		    who = Misc.playerMatch(split[3]);
 		}
@@ -664,231 +618,179 @@ public class iListen extends PlayerListener {
 		who = player;
 	    }
 
-	    if((new ItemStack(item)).getType() == null || item == 0) {
-		Messaging.send("&cInvalid item.");
-		event.setCancelled(true);
-		return;
-	    }
+	    int slot = who.getInventory().firstEmpty();
 
 	    if(dataType != -1) {
-		who.getWorld().dropItem(who.getLocation(), new ItemStack(item, amount, ((byte)dataType)));
+		if(slot < 0) {
+		    who.getWorld().dropItem(who.getLocation(), new ItemStack(itemId, amount, ((byte)dataType)));
+		} else {
+		    who.getInventory().addItem(new ItemStack(itemId, amount, ((byte)dataType)));
+		}
 	    } else {
-		who.getWorld().dropItem(who.getLocation(), new ItemStack(item, amount));
+		if(slot < 0) {
+		    who.getWorld().dropItem(who.getLocation(), new ItemStack(itemId, amount));
+		} else {
+		    who.getInventory().addItem(new ItemStack(itemId, amount));
+		}
 	    }
 	    
 	    if(who.getName().equals(player.getName())) {
-		Messaging.send(who, "&2Here you go c:!");
+		Messaging.send(who, "&2Enjoy! Giving &f"+amount+"&2 of &f"+Items.name(itemId)+"&2.");
 	    } else {
-		Messaging.send(who, "&2Enjoy the gift c:!");
+		Messaging.send(who, "&2Enjoy the gift! &f"+amount+"&2 of &f"+Items.name(itemId)+"&2. c:!");
 	    }
 
 	    event.setCancelled(true);
 	}
 
-	if((!event.isCancelled()) && Misc.is(base, "/time")) {
+	if(Misc.is(base, "/time")) {
 	    if (!General.Watch.permission("set-time", player)) {
 		return;
 	    }
 
-	    if (split.length == 2) {
-		if (split[1].equalsIgnoreCase("day")) {
-		    setRelativeTime(0);
-		} else if (split[1].equalsIgnoreCase("night")) {
-		    setRelativeTime(13000);
-		} else if (split[1].equalsIgnoreCase("check")) {
-		    Messaging.send("&cThe time is " + getRelativeTime() + "! (RAW: " + getTime() + ")");
+            long time = getTime();
+	    long timeRelative = getRelativeTime();
+            long timeStart = getStartTime();
+
+	    if(split.length < 2) {
+                int hours = (int)((time / 1000+8) % 24);
+                int minutes = (((int)(time % 1000)) / 1000) * 60;
+                Messaging.send("&cTime: "+hours+":"+minutes);
+	    } else if (split.length == 2) {
+		String command = split[1];
+		if (Misc.is(command, "help")) {
+		    Messaging.send("&c-------- /time help --------");
+		    Messaging.send("&c/time &f-&c Shows relative time");
+		    Messaging.send("&c/time day &f-&c Turns time to day");
+		    Messaging.send("&c/time night &f-&c Turns time to night");
+		    Messaging.send("&c/time raw &f-&c Shows raw time");
+		    Messaging.send("&c/time =13000 &f-&c Sets raw time");
+		    Messaging.send("&c/time +500 &f-&c Adds to raw time");
+		    Messaging.send("&c/time -500 &f-&c Subtracts from raw time");
+		    Messaging.send("&c/time 12 &f-&c Set relative time");
+		} else if (Misc.is(command, "day")) {
+		    setTime(timeStart);
+		} else if (Misc.is(command, "night")) {
+		    setTime(timeStart+13000);
+		} else if (Misc.is(command, "raw")) {
+		    Messaging.send("&cRaw:  " + time);
+                } else if (command.startsWith("=")) {
+                    try {
+			setTime(Long.parseLong(command.substring(1)));
+                    } catch(NumberFormatException ex) { }
+                } else if (command.startsWith("+")) {
+                    try {
+			setTime(time+Long.parseLong(command.substring(1)));
+                    } catch(NumberFormatException ex) { }
+                } else if (command.startsWith("-")) {
+                    try {
+			setTime(time-Long.parseLong(command.substring(1)));
+                    } catch(NumberFormatException ex) { }
+                } else {
+                    try {
+			timeRelative = (Integer.parseInt(command)*1000-8000+24000)%24000;
+			setTime(timeStart + timeRelative);
+                    } catch(NumberFormatException ex) { }
+                }
+	    } else {
+		Messaging.send("&cCorrect usage is: /time [day|night|raw|([=|+|-]time)] (rawtime)");
+		Messaging.send("&c/time &f-&c Shows relative time");
+		Messaging.send("&c/time day &f-&c Turns time to day");
+		Messaging.send("&c/time night &f-&c Turns time to night");
+		Messaging.send("&c/time raw &f-&c Shows raw time");
+		Messaging.send("&c/time =13000 &f-&c Sets raw time");
+		Messaging.send("&c/time +500 &f-&c Adds to raw time");
+		Messaging.send("&c/time -500 &f-&c Subtracts from raw time");
+		Messaging.send("&c/time 12 &f-&c Set relative time");
+	    }
+
+	    return;
+	}
+
+	if(Misc.isEither(base, "/playerlist", "/online") || Misc.is(base, "/who")) {
+	    if(split.length == 2) {
+		if (!General.Watch.permission("see-player-info", player)) {
+		    return;
+		}
+
+		Player lookup = Misc.playerMatch(split[1]);
+		String name = lookup.getName();
+		String displayName = lookup.getDisplayName();
+		String bar = "";
+		String location = "";
+
+		if(General.health) {
+		    int health = lookup.getHealth();
+		    int length = 10;
+		    int bars = Math.round(health/2);
+		    int remainder = length-bars;
+		    String hb_color = ((bars >= 7) ? "&2" : ((bars < 7 && bars >= 3) ? "&e" : ((bars < 3) ? "&c" : "&2")));
+		    bar = " &f["+ hb_color + Misc.repeat('|', bars) + "&7" + Misc.repeat('|', remainder) + "&f]";
+		}
+
+		if(General.coords) {
+		    int x = (int)lookup.getLocation().getX();
+		    int y = (int)lookup.getLocation().getY();
+		    int z = (int)lookup.getLocation().getZ();
+		    location = x+"x, "+y+"y, "+z+"z";
+		}
+
+		Messaging.send("&f------------------------------------------------");
+		Messaging.send("&e Player &f["+name+"/"+displayName+"]&e Info:");
+		Messaging.send("&f------------------------------------------------");
+		Messaging.send("&6 Username: &f" + name + ((General.health) ? bar : ""));
+
+		if(General.coords) {
+		    Messaging.send("&6 -&e Location: &f" + location);
+		}
+
+		Messaging.send("&6 -&e Status: &f" + ((isAFK(lookup)) ? "AFK ("+AFK.get(lookup)+")" : "Around."));
+
+		Messaging.send("&f------------------------------------------------");
+	    } else {
+		ArrayList<Player> olist = new ArrayList<Player>();
+		Player[] players = new Player[]{};
+
+		for(Player p : plugin.getServer().getOnlinePlayers()) {
+		    if(p == null || !p.isOnline()) { continue; } else {
+			olist.add(p);
+		    }
+		}
+
+		// Cast it to something empty to prevent nulls / empties
+		players = olist.toArray(players);
+
+		if(players.length <= 1 || olist.isEmpty()) {
+		    Messaging.send("&ePlayer list (1):");
+		    Messaging.send("&f - Just you.");
+		    Messaging.send(" ");
 		} else {
-		    try {
-			setRelativeTime(Long.parseLong(split[1]));
-		    } catch (NumberFormatException ex) {
-			Messaging.send("&cPlease enter numbers, not letters.");
+		    int online = players.length;
+		    ArrayList<String> list = new ArrayList<String>();
+		    String currently = "";
+		    int on = 0, perLine = 5, i = 1;
+
+		    for(Player current : players) {
+			if(current == null) { ++on; continue; }
+			if(i == perLine) { list.add(currently); currently = ""; i = 1; }
+			currently += (on >= online) ? current.getName() : current.getName() + ", ";
+			++on; ++i;
 		    }
-		}
-	    } else if (split.length == 3) {
-		if (split[1].equalsIgnoreCase("raw")) {
-		    try {
-			setTime(Long.parseLong(split[2]));
-		    } catch (NumberFormatException ex) {
-			Messaging.send("&cPlease enter numbers, not letters.");
+
+		    // Guess list was smaller than 5.
+		    if(list.isEmpty()) {
+			list.add(currently);
 		    }
+
+		    Messaging.send("&ePlayers list ("+on+"):");
+
+		    for(String line : list) {
+			Messaging.send(line);
+		    }
+
+		    Messaging.send(" ");
 		}
-	    } else {
-		Messaging.send("&cCorrect usage is: /time [time|'day|night|check|raw'] (rawtime)");
-		return;
 	    }
-	}
-
-	if((!event.isCancelled()) && Misc.isEither(base, "/playerlist", "/online")) {
-	    if(plugin.getServer().getOnlinePlayers() == null) {
-		Messaging.send(" ");
-		Messaging.send("&ePlayers &fcurrently&e online:");
-		Messaging.send("&f - Just you.");
-		Messaging.send(" ");
-		event.setCancelled(true);
-		return;
-	    }
-
-	    Player[] online = plugin.getServer().getOnlinePlayers();
-
-	    String list = "";
-	    int length = (online.length-1);
-	    int on = 0;
-
-	    for(Player current : online) {
-		if(current == null) { ++on; continue; }
-
-		list += (on >= length) ? current.getName() : current.getName() + ", ";
-		++on;
-	    }
-
-	    Messaging.send(" ");
-	    Messaging.send("&ePlayers &fcurrently&e online:");
-	    Messaging.send(list);
-	    Messaging.send(" ");
-
-	    event.setCancelled(true);
-	}
-
-	if((!event.isCancelled()) && Misc.isEither(base, "/reload", "/reloadplugin")) {
-	    if (!General.Watch.permission("manage-plugins", player)) {
-		return;
-	    }
-
-	    if(split.length < 2) {
-		Messaging.send("&cInvalid parameters.");
-		Messaging.send("&cUsage:&f /reload [plugin]");
-		event.setCancelled(true);
-		return;
-	    }
-
-	    String p = split[1];
-	    boolean enabled = plugin.getServer().getPluginManager().isPluginEnabled(p);
-	    Plugin reloading = plugin.getServer().getPluginManager().getPlugin(p);
-
-	    if(enabled) {
-		plugin.getPluginLoader().disablePlugin(reloading);
-		Messaging.send("&ePlugin [&f"+plugin+"&e] Disabled.");
-		event.setCancelled(true);
-		return;
-	    }
-
-	    plugin.getPluginLoader().enablePlugin(reloading);
-	    Messaging.send("&ePlugin [&f"+plugin+"&e] Enabled.");
-
-	    event.setCancelled(true);
-	}
-
-	if((!event.isCancelled()) && Misc.isEither(base, "/enable", "/enableplugin")) {
-	    if (!General.Watch.permission("manage-plugins", player)) {
-		return;
-	    }
-
-	    if(split.length < 2) {
-		Messaging.send("&cInvalid parameters.");
-		Messaging.send("&cUsage:&f /enable [plugin]");
-		event.setCancelled(true);
-		return;
-	    }
-
-	    String p = split[1];
-	    boolean enabled = plugin.getServer().getPluginManager().isPluginEnabled(p);
-	    Plugin reloading = plugin.getServer().getPluginManager().getPlugin(p);
-
-	    if(!enabled) {
-		plugin.getPluginLoader().enablePlugin(reloading);
-		Messaging.send("&ePlugin [&f"+plugin+"&e] Enabled.");
-		event.setCancelled(true);
-		return;
-	    }
-
-	    Messaging.send("&ePlugin [&f"+plugin+"&e] is already enabled.");
-	    event.setCancelled(true);
-	}
-
-	if((!event.isCancelled()) && Misc.isEither(base, "/disable", "/disableplugin")) {
-	    if (!General.Watch.permission("manage-plugins", player)) {
-		return;
-	    }
-
-	    if(split.length < 2) {
-		Messaging.send("&cInvalid parameters.");
-		Messaging.send("&cUsage:&f /disable [plugin]");
-		event.setCancelled(true);
-		return;
-	    }
-
-	    String p = split[1];
-	    boolean enabled = plugin.getServer().getPluginManager().isPluginEnabled(p);
-
-	    if(enabled) {
-		Plugin reloading = plugin.getServer().getPluginManager().getPlugin(p);
-
-		plugin.getPluginLoader().disablePlugin(reloading);
-		Messaging.send("&ePlugin [&f"+plugin+"&e] Disabled.");
-		event.setCancelled(true);
-		return;
-	    }
-
-	    Messaging.send("&ePlugin [&f"+plugin+"&e] is not enabled.");
-	    event.setCancelled(true);
-	}
-
-	if((!event.isCancelled()) && Misc.isEither(base, "/who", "/info")) {
-	    if (!General.Watch.permission("see-player-info", player)) {
-		return;
-	    }
-
-	    String looking = "";
-	    Player current = null;
-
-	    if(split.length < 2) {
-		looking = player.getName();
-	    } else {
-		looking = split[1];
-	    }
-
-	    if(looking.equals(player.getName())) {
-		current = player;
-	    } else {
-		current = plugin.getServer().getPlayer(looking);
-	    }
-
-	    if(current == null) {
-		Messaging.send("&cThat player is either not online, or does not exist!");
-		event.setCancelled(true);
-		return;
-	    }
-
-	    String name = current.getName();
-	    String hb_color = "&2";
-	    int health = current.getHealth();
-	    int x = (int)current.getLocation().getX();
-	    int y = (int)current.getLocation().getY();
-	    int z = (int)current.getLocation().getZ();
-
-	    int length = 10;
-	    int bars = Math.round(health/2);
-	    int remainder = length-bars;
-
-	    if(bars >= 7) {
-		hb_color = "&2";
-	    } else if(bars < 7 && bars >= 3) {
-		hb_color = "&e";
-	    } else if(bars < 3) {
-		hb_color = "&c";
-	    }
-
-	    String bar = hb_color + Misc.repeat('|', bars) + "&4" + Misc.repeat('|', remainder);
-	    String location = x+"x, "+y+"y, "+z+"z";
-
-	    Messaging.send("&f------------------------------------------------");
-	    Messaging.send("&e Information for &f"+current.getName()+"&e:");
-	    Messaging.send("&f------------------------------------------------");
-	    Messaging.send("&6 Username: &f" + current.getName() + " ["+bar+"&f]");
-	    Messaging.send("&6 -&e Location: &f" + location);
-	    Messaging.send("&6 -&e Status: &f" + ((isAFK(current)) ? "AFK ("+AFK.get(current)+")" : "Around."));
-	    Messaging.send("&f------------------------------------------------");
-	    event.setCancelled(true);
 	}
     }
 }
