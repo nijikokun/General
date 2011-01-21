@@ -1,5 +1,6 @@
 package com.nijikokun.bukkit.General;
 
+import com.nijikokun.bukkit.Permissions.Permissions;
 import com.nijikokun.bukkit.iConomy.iConomy;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -350,7 +351,7 @@ public class iListen extends PlayerListener {
 	}
 	
 	if((!event.isCancelled()) && Misc.is(base, "/setspawn")) {
-	    if (!General.Watch.permission("set-spawn", player)) {
+	    if (!General.Permissions.Security.permission(player, "general.spawn.set")) {
 		return;
 	    }
 	    
@@ -361,7 +362,7 @@ public class iListen extends PlayerListener {
 	}
 
 	if(Misc.is(base, "/spawn")) {
-	    if (!General.Watch.permission("spawn", player)) {
+	    if (!General.Permissions.Security.permission(player, "general.spawn")) {
 		return;
 	    }
 
@@ -406,7 +407,7 @@ public class iListen extends PlayerListener {
 	}
 
 	if(Misc.isEither(base, "/tp", "/teleport")) {
-	    if (!General.Watch.permission("teleport", player)) {
+	    if (!General.Permissions.Security.permission(player, "general.teleport")) {
 		return;
 	    }
 
@@ -445,7 +446,7 @@ public class iListen extends PlayerListener {
 	}
 
 	if(Misc.isEither(base, "/s", "/tphere")) {
-	    if (!General.Watch.permission("teleport", player)) {
+	    if (!General.Permissions.Security.permission(player, "general.teleport.here")) {
 		return;
 	    }
 
@@ -537,7 +538,7 @@ public class iListen extends PlayerListener {
 	}
 
 	if(Misc.isEither(base, "/i", "/give")) {
-	    if (!General.Watch.permission("give-items", player)) {
+	    if (!General.Permissions.Security.permission(player, "general.items")) {
 		return;
 	    }
 
@@ -644,7 +645,7 @@ public class iListen extends PlayerListener {
 	}
 
 	if(Misc.is(base, "/time")) {
-	    if (!General.Watch.permission("set-time", player)) {
+	    if (!General.Permissions.Security.permission(player, "general.time")) {
 		return;
 	    }
 
@@ -709,7 +710,7 @@ public class iListen extends PlayerListener {
 
 	if(Misc.isEither(base, "/playerlist", "/online") || Misc.is(base, "/who")) {
 	    if(split.length == 2) {
-		if (!General.Watch.permission("see-player-info", player)) {
+		if (!General.Permissions.Security.permission(player, "general.player-info")) {
 		    return;
 		}
 
