@@ -450,14 +450,14 @@ public class iListen extends PlayerListener {
 		return;
 	    }
 
-	    if (split.length < 1) {
+	    if (split.length < 2) {
 		Messaging.send("&cCorrect usage is:&f /s [player] &cor&f /tphere [player]");
 		return;
 	    }
 
 	    Player who = Misc.playerMatch(split[1]);
 
-	    if (player != null) {
+	    if (who != null) {
 		if (who.getName().equalsIgnoreCase(player.getName())) {
 		    Messaging.send("&cWow look at that! You teleported yourself to yourself!");
 		    return;
