@@ -400,36 +400,36 @@ public class iListen extends PlayerListener {
 	    }
 	}
 
-	if(Misc.isEither(base, "/tp", "/teleport")) {
+	if (Misc.isEither(base, "/tp", "/teleport")) {
 	    if (!General.Permissions.Security.permission(player, "general.teleport")) {
 		return;
 	    }
 
-            if (split.length == 2) {
-                String to = split[1];
+	    if (split.length == 2) {
+		String to = split[1];
 
-                if (to.equalsIgnoreCase("*")) {
-                    Messaging.send("&cIncorrect usage of wildchar *");
-                } else if (to.contains(",")) {
-                    Messaging.send("&cIncorrect usage of multiple players.");
-                } else {
-                    if (!teleport(player.getName(), to)) {
-                       Messaging.send("&cCannot find destination player: &f" + to);
-                    }
-                }
-            } else if (split.length == 3) {
-                String who = split[1];
-                String to = split[2];
-
-                if (to.equalsIgnoreCase("*")) {
-                    Messaging.send("&cIncorrect usage of wildchar *");
+		if (to.equalsIgnoreCase("*")) {
+		    Messaging.send("&cIncorrect usage of wildchar *");
 		} else if (to.contains(",")) {
-                    Messaging.send("&cIncorrect usage of multiple players.");
-                } else {
-                    if (!teleport(who, to)) {
-                        Messaging.send("&cCould not teleport " + who + " to " + to + ".");
-                    }
-                }
+		    Messaging.send("&cIncorrect usage of multiple players.");
+		} else {
+		    if (!teleport(player.getName(), to)) {
+			Messaging.send("&cCannot find destination player: &f" + to);
+		    }
+		}
+	    } else if (split.length == 3) {
+		String who = split[1];
+		String to = split[2];
+
+		if (to.equalsIgnoreCase("*")) {
+		    Messaging.send("&cIncorrect usage of wildchar *");
+		} else if (to.contains(",")) {
+		    Messaging.send("&cIncorrect usage of multiple players.");
+		} else {
+		    if (!teleport(who, to)) {
+			Messaging.send("&cCould not teleport " + who + " to " + to + ".");
+		    }
+		}
 	    } else {
 		Messaging.send("&c------ &f/tp help&c ------");
 		Messaging.send("&c/tp [player] &f-&c Teleport to a player");
@@ -439,7 +439,7 @@ public class iListen extends PlayerListener {
 	    }
 	}
 
-	if(Misc.isEither(base, "/s", "/tphere")) {
+	if (Misc.isEither(base, "/s", "/tphere")) {
 	    if (!General.Permissions.Security.permission(player, "general.teleport.here")) {
 		return;
 	    }
@@ -531,13 +531,14 @@ public class iListen extends PlayerListener {
 	    }
 	}
 
-	if(Misc.isEither(base, "/i", "/give")) {
+	if (Misc.isEither(base, "/i", "/give") || Misc.is(base, "/item")) {
 	    if (!General.Permissions.Security.permission(player, "general.items")) {
 		return;
 	    }
 
 	    if (split.length < 2) {
-		Messaging.send("&cCorrect usage is: /i [item(:type)|player] [item(:type)|amount] (amount)"); return;
+		Messaging.send("&cCorrect usage is: /i [item(:type)|player] [item(:type)|amount] (amount)");
+		return;
 	    }
 
 	    int itemId = 0;
@@ -547,37 +548,41 @@ public class iListen extends PlayerListener {
 	    Player who = null;
 
 	    try {
-			if(split[1].contains(":")) {
-				String[] data = split[1].split(":");
-	
-				try {
-					dataType = Integer.valueOf(data[1]);
-				} catch (NumberFormatException e) { dataType = -1; }
-	
-				tmp = Items.validate(data[0]);
-				itemId = tmp[0];
-			} else {
-				tmp = Items.validate(split[1]);
-				itemId = tmp[0];
-				dataType = tmp[1];
-			}
-	
-			if(itemId == -1) {
-				who = Misc.playerMatch(split[1]);
-			}
-	    } catch(NumberFormatException e) {
-			who = Misc.playerMatch(split[1]);
+		if (split[1].contains(":")) {
+		    String[] data = split[1].split(":");
+
+		    try {
+			dataType = Integer.valueOf(data[1]);
+		    } catch (NumberFormatException e) {
+			dataType = -1;
+		    }
+
+		    tmp = Items.validate(data[0]);
+		    itemId = tmp[0];
+		} else {
+		    tmp = Items.validate(split[1]);
+		    itemId = tmp[0];
+		    dataType = tmp[1];
+		}
+
+		if (itemId == -1) {
+		    who = Misc.playerMatch(split[1]);
+		}
+	    } catch (NumberFormatException e) {
+		who = Misc.playerMatch(split[1]);
 	    }
 
-	    if((itemId == 0 || itemId == -1) && who != null) {
+	    if ((itemId == 0 || itemId == -1) && who != null) {
 		String i = split[2];
 
-		if(i.contains(":")) {
+		if (i.contains(":")) {
 		    String[] data = i.split(":");
 
 		    try {
 			dataType = Integer.valueOf(data[1]);
-		    } catch (NumberFormatException e) { dataType = -1; }
+		    } catch (NumberFormatException e) {
+			dataType = -1;
+		    }
 
 		    i = data[0];
 		}
@@ -585,65 +590,75 @@ public class iListen extends PlayerListener {
 		tmp = Items.validate(i);
 		itemId = tmp[0];
 
-		if(dataType == -1) {
+		if (dataType == -1) {
 		    dataType = Items.validateGrabType(i);
 		}
 	    }
 
-	    if(itemId == -1 || itemId == 0) {
-		Messaging.send("&cInvalid item."); return;
+	    if (itemId == -1 || itemId == 0) {
+		Messaging.send("&cInvalid item.");
+		return;
 	    }
 
-	    if(dataType != -1) {
-			if(!Items.validateType(itemId, dataType)) {
-				Messaging.send("&f"+dataType+"&c is not a valid data type for &f"+Items.name(itemId,-1)+"&c."); return;
-			}
+	    if (dataType != -1) {
+		if (!Items.validateType(itemId, dataType)) {
+		    Messaging.send("&f" + dataType + "&c is not a valid data type for &f" + Items.name(itemId, -1) + "&c.");
+		    return;
+		}
 	    }
 
-	    if(split.length >= 3 && who == null) {
+	    if (split.length >= 3 && who == null) {
 		try {
 		    amount = Integer.valueOf(split[2]);
-		} catch(NumberFormatException e) { amount = 1; }
+		} catch (NumberFormatException e) {
+		    amount = 1;
+		}
 	    } else if (split.length >= 4) {
-		if(who != null) {
+		if (who != null) {
 		    try {
 			amount = Integer.valueOf(split[3]);
-		    } catch(NumberFormatException e) { amount = 1; }
+		    } catch (NumberFormatException e) {
+			amount = 1;
+		    }
 		} else {
 		    who = Misc.playerMatch(split[3]);
 		}
 	    }
-	    
-	    if(amount == 0) { // give one stack
-	    	if(itemId == 332 || itemId == 344) amount = 16; // eggs and snowballs
-	    	else if(Items.isStackable(itemId)) amount = 64;
-	    	else amount = 1;
+
+	    if (amount == 0) { // give one stack
+		if (itemId == 332 || itemId == 344) {
+		    amount = 16; // eggs and snowballs
+		} else if (Items.isStackable(itemId)) {
+		    amount = 64;
+		} else {
+		    amount = 1;
+		}
 	    }
 
-	    if(who == null) {
+	    if (who == null) {
 		who = player;
 	    }
 
 	    int slot = who.getInventory().firstEmpty();
 
-	    if(dataType != -1) {
-			if(slot < 0) {
-				who.getWorld().dropItem(who.getLocation(), new ItemStack(itemId, amount, ((byte)dataType)));
-			} else {
-				who.getInventory().addItem(new ItemStack(itemId, amount, ((byte)dataType)));
-			}
+	    if (dataType != -1) {
+		if (slot < 0) {
+		    who.getWorld().dropItem(who.getLocation(), new ItemStack(itemId, amount, ((byte) dataType)));
+		} else {
+		    who.getInventory().addItem(new ItemStack(itemId, amount, ((byte) dataType)));
+		}
 	    } else {
-			if(slot < 0) {
-				who.getWorld().dropItem(who.getLocation(), new ItemStack(itemId, amount));
-			} else {
-				who.getInventory().addItem(new ItemStack(itemId, amount));
-			}
+		if (slot < 0) {
+		    who.getWorld().dropItem(who.getLocation(), new ItemStack(itemId, amount));
+		} else {
+		    who.getInventory().addItem(new ItemStack(itemId, amount));
+		}
 	    }
-	    
-	    if(who.getName().equals(player.getName())) {
-		Messaging.send(who, "&2Enjoy! Giving &f"+amount+"&2 of &f"+Items.name(itemId,dataType)+"&2.");
+
+	    if (who.getName().equals(player.getName())) {
+		Messaging.send(who, "&2Enjoy! Giving &f" + amount + "&2 of &f" + Items.name(itemId, dataType) + "&2.");
 	    } else {
-		Messaging.send(who, "&2Enjoy the gift! &f"+amount+"&2 of &f"+Items.name(itemId,dataType)+"&2. c:!");
+		Messaging.send(who, "&2Enjoy the gift! &f" + amount + "&2 of &f" + Items.name(itemId, dataType) + "&2. c:!");
 	    }
 
 	    event.setCancelled(true);
