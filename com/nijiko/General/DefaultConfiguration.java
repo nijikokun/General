@@ -1,4 +1,4 @@
-package com.nijiko;
+package com.nijiko.General;
 
 /**
  * Basic configuration loader.

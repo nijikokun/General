@@ -1,4 +1,4 @@
-package com.nijiko;
+package com.nijiko.General;
 
 import org.bukkit.util.config.Configuration;
 

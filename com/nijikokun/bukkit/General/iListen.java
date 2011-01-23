@@ -1,30 +1,24 @@
 package com.nijikokun.bukkit.General;
 
-import com.nijikokun.bukkit.Permissions.Permissions;
-//import com.nijikokun.bukkit.iConomy.iConomy;
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.logging.Logger;
+import net.minecraft.server.WorldServer;
 import org.bukkit.World;
 import org.bukkit.event.player.PlayerChatEvent;
 import org.bukkit.event.player.PlayerEvent;
 import org.bukkit.event.player.PlayerListener;
-import org.bukkit.plugin.InvalidDescriptionException;
-import org.bukkit.plugin.InvalidPluginException;
 import org.bukkit.plugin.Plugin;
-import net.minecraft.server.WorldServer;
 import org.bukkit.Location;
 import org.bukkit.craftbukkit.CraftWorld;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import com.nijikokun.bukkit.iConomy.iConomy;
 
 
 /**
@@ -292,10 +286,10 @@ public class iListen extends PlayerListener {
 
 	Plugin test = plugin.getServer().getPluginManager().getPlugin("iConomy");
 
-	//if(test != null) {
-	//    iConomy iConomy = (iConomy)test;
-	//    balance = iConomy.db.get_balance(player.getName()) + " " + iConomy.currency;
-	//}
+	if(test != null) {
+	    iConomy iConomy = (iConomy)test;
+	    balance = iConomy.db.get_balance(player.getName()) + " " + iConomy.currency;
+	}
 
 	for(String line : motd) {
 	    Messaging.send(
@@ -379,10 +373,10 @@ public class iListen extends PlayerListener {
 	    String balance = "";
 	    Plugin test = plugin.getServer().getPluginManager().getPlugin("iConomy");
 
-	    //if(test != null) {
-		//iConomy iConomy = (iConomy)test;
-		//balance = iConomy.db.get_balance(player.getName()) + " " + iConomy.currency;
-	    //}
+	    if(test != null) {
+		iConomy iConomy = (iConomy)test;
+		balance = iConomy.db.get_balance(player.getName()) + " " + iConomy.currency;
+	    }
 
 	    for(String line : motd) {
 		Messaging.send(

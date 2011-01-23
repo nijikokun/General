@@ -14,12 +14,12 @@ import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.PluginLoader;
 import org.bukkit.plugin.java.JavaPlugin;
 import com.nijikokun.bukkit.Permissions.Permissions;
-import com.nijiko.ConfigurationHandler;
-import com.nijiko.DefaultConfiguration;
+import com.nijiko.General.ConfigurationHandler;
+import com.nijiko.General.DefaultConfiguration;
 import org.bukkit.plugin.Plugin;
 
 /**
- * General 1.1 & Code from iConomy 2.x
+ * General 2.x
  * Copyright (C) 2011  Nijikokun <nijikokun@gmail.com>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -45,8 +45,8 @@ public class General extends JavaPlugin {
      * Central Data pertaining directly to the plugin name & versioning.
      */
     public static String name = "General";
-    public static String codename = "Yakuza";
-    public static String version = "1.9";
+    public static String codename = "Mafia";
+    public static String version = "2.0";
 
     /**
      * Listener for the plugin system.
