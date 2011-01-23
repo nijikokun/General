@@ -1,7 +1,7 @@
 package com.nijikokun.bukkit.General;
 
 import com.nijikokun.bukkit.Permissions.Permissions;
-import com.nijikokun.bukkit.iConomy.iConomy;
+//import com.nijikokun.bukkit.iConomy.iConomy;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -292,10 +292,10 @@ public class iListen extends PlayerListener {
 
 	Plugin test = plugin.getServer().getPluginManager().getPlugin("iConomy");
 
-	if(test != null) {
-	    iConomy iConomy = (iConomy)test;
-	    balance = iConomy.db.get_balance(player.getName()) + " " + iConomy.currency;
-	}
+	//if(test != null) {
+	//    iConomy iConomy = (iConomy)test;
+	//    balance = iConomy.db.get_balance(player.getName()) + " " + iConomy.currency;
+	//}
 
 	for(String line : motd) {
 	    Messaging.send(
@@ -379,10 +379,10 @@ public class iListen extends PlayerListener {
 	    String balance = "";
 	    Plugin test = plugin.getServer().getPluginManager().getPlugin("iConomy");
 
-	    if(test != null) {
-		iConomy iConomy = (iConomy)test;
-		balance = iConomy.db.get_balance(player.getName()) + " " + iConomy.currency;
-	    }
+	    //if(test != null) {
+		//iConomy iConomy = (iConomy)test;
+		//balance = iConomy.db.get_balance(player.getName()) + " " + iConomy.currency;
+	    //}
 
 	    for(String line : motd) {
 		Messaging.send(
@@ -543,32 +543,36 @@ public class iListen extends PlayerListener {
 	    }
 
 	    if (split.length < 2) {
-		Messaging.send("&cCorrect usage is: /i [item|player](:type) [item|amount] (amount)"); return;
+		Messaging.send("&cCorrect usage is: /i [item(:type)|player] [item(:type)|amount] (amount)"); return;
 	    }
 
 	    int itemId = 0;
+	    int[] tmp;
 	    int amount = 1;
 	    int dataType = -1;
 	    Player who = null;
 
 	    try {
-		if(split[1].contains(":")) {
-		    String[] data = split[1].split(":");
-
-		    try {
-			dataType = Integer.valueOf(data[1]);
-		    } catch (NumberFormatException e) { dataType = -1; }
-
-		    itemId = Items.validate(data[0]);
-		} else {
-		    itemId = Items.validate(split[1]);
-		}
-
-		if(itemId == -1) {
-		    who = Misc.playerMatch(split[1]);
-		}
+			if(split[1].contains(":")) {
+				String[] data = split[1].split(":");
+	
+				try {
+					dataType = Integer.valueOf(data[1]);
+				} catch (NumberFormatException e) { dataType = -1; }
+	
+				tmp = Items.validate(data[0]);
+				itemId = tmp[0];
+			} else {
+				tmp = Items.validate(split[1]);
+				itemId = tmp[0];
+				dataType = tmp[1];
+			}
+	
+			if(itemId == -1) {
+				who = Misc.playerMatch(split[1]);
+			}
 	    } catch(NumberFormatException e) {
-		who = Misc.playerMatch(split[1]);
+			who = Misc.playerMatch(split[1]);
 	    }
 
 	    if((itemId == 0 || itemId == -1) && who != null) {
@@ -584,7 +588,8 @@ public class iListen extends PlayerListener {
 		    i = data[0];
 		}
 
-		itemId = Items.validate(i);
+		tmp = Items.validate(i);
+		itemId = tmp[0];
 
 		if(dataType == -1) {
 		    dataType = Items.validateGrabType(i);
@@ -596,9 +601,9 @@ public class iListen extends PlayerListener {
 	    }
 
 	    if(dataType != -1) {
-		if(!Items.validateType(itemId, dataType)) {
-		    Messaging.send("&f"+dataType+"&c is not a valid data type for &f"+Items.name(itemId)+"&c."); return;
-		}
+			if(!Items.validateType(itemId, dataType)) {
+				Messaging.send("&f"+dataType+"&c is not a valid data type for &f"+Items.name(itemId,-1)+"&c."); return;
+			}
 	    }
 
 	    if(split.length >= 3 && who == null) {
@@ -614,6 +619,12 @@ public class iListen extends PlayerListener {
 		    who = Misc.playerMatch(split[3]);
 		}
 	    }
+	    
+	    if(amount == 0) { // give one stack
+	    	if(itemId == 332 || itemId == 344) amount = 16; // eggs and snowballs
+	    	else if(Items.isStackable(itemId)) amount = 64;
+	    	else amount = 1;
+	    }
 
 	    if(who == null) {
 		who = player;
@@ -622,23 +633,23 @@ public class iListen extends PlayerListener {
 	    int slot = who.getInventory().firstEmpty();
 
 	    if(dataType != -1) {
-		if(slot < 0) {
-		    who.getWorld().dropItem(who.getLocation(), new ItemStack(itemId, amount, ((byte)dataType)));
-		} else {
-		    who.getInventory().addItem(new ItemStack(itemId, amount, ((byte)dataType)));
-		}
+			if(slot < 0) {
+				who.getWorld().dropItem(who.getLocation(), new ItemStack(itemId, amount, ((byte)dataType)));
+			} else {
+				who.getInventory().addItem(new ItemStack(itemId, amount, ((byte)dataType)));
+			}
 	    } else {
-		if(slot < 0) {
-		    who.getWorld().dropItem(who.getLocation(), new ItemStack(itemId, amount));
-		} else {
-		    who.getInventory().addItem(new ItemStack(itemId, amount));
-		}
+			if(slot < 0) {
+				who.getWorld().dropItem(who.getLocation(), new ItemStack(itemId, amount));
+			} else {
+				who.getInventory().addItem(new ItemStack(itemId, amount));
+			}
 	    }
 	    
 	    if(who.getName().equals(player.getName())) {
-		Messaging.send(who, "&2Enjoy! Giving &f"+amount+"&2 of &f"+Items.name(itemId)+"&2.");
+		Messaging.send(who, "&2Enjoy! Giving &f"+amount+"&2 of &f"+Items.name(itemId,dataType)+"&2.");
 	    } else {
-		Messaging.send(who, "&2Enjoy the gift! &f"+amount+"&2 of &f"+Items.name(itemId)+"&2. c:!");
+		Messaging.send(who, "&2Enjoy the gift! &f"+amount+"&2 of &f"+Items.name(itemId,dataType)+"&2. c:!");
 	    }
 
 	    event.setCancelled(true);

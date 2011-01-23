@@ -18,18 +18,21 @@ public class Items {
      * @param id
      * @return
      */
-    public static String name(int id) {
-	if(General.items.containsKey(Misc.string(id))) {
-	    return General.items.get(Misc.string(id));
-	}
-
-	for(Material item : Material.values()) {
-	    if(item.getId() == id) {
-		return item.toString();
-	    }
-	}
-
-	return Misc.string(id);
+    public static String name(int id,int data) {
+    	String longKey = Misc.string(id)+ "," + Misc.string(data);
+		if(General.items.containsKey(Misc.string(id))) {
+			return General.items.get(Misc.string(id));
+		} else if(data >= 0 && General.items.containsKey(longKey)) {
+			return General.items.get(longKey);
+		}
+	
+		for(Material item : Material.values()) {
+			if(item.getId() == id) {
+			return item.toString();
+			}
+		}
+	
+		return Misc.string(id);
     }
 
     /**
@@ -157,33 +160,35 @@ public class Items {
      * @param item
      * @return -1 if false, id if true.
      */
-    public static int validate(String item) {
-	int itemId = -1;
-
-
-	try {
-	    itemId = Integer.valueOf(item);
-	} catch(NumberFormatException e) {
-	    for (String id : General.items.keySet()) {
-		if (General.items.get(id).equalsIgnoreCase(item)) {
-		    if(id.contains(",")) {
-			itemId = Integer.valueOf(id.split(",")[0]);
-		    } else {
-			itemId = Integer.valueOf(id);
-		    }
+    public static int[] validate(String item) {
+		int[] ret = new int[] {-1, 0};
+	
+		try {
+			ret[0] = Integer.valueOf(item);
+		} catch(NumberFormatException e) {
+			for (String id : General.items.keySet()) {
+				if (General.items.get(id).equalsIgnoreCase(item)) {
+					if(id.contains(",")) {
+						String[] split = id.split(",");
+						ret[0] = Integer.valueOf(split[0]);
+						ret[1] = Integer.valueOf(split[1]);
+					} else {
+						ret[0] = Integer.valueOf(id);
+					}
+				}
+			}
+	
+			if(ret[0] == -1) {
+			return ret;
+			}
 		}
-	    }
-
-	    if(itemId == -1) {
-		return -1;
-	    }
-	}
-
-	if(!checkID(itemId)) {
-	    return -1;
-	} else {
-	    return itemId;
-	}
+	
+		if(!checkID(ret[0])) {
+			ret[0] = -1;
+			return ret;
+		} else {
+			return ret;
+		}
     }
     
     /**
@@ -224,7 +229,7 @@ public class Items {
     }
 
     public static boolean validateType(int id, int type) {
-	if(type == -1) {
+	if(type == -1 || type == 0) {
 	    return true;
 	}
 
@@ -259,6 +264,14 @@ public class Items {
 		return true;
 	    }
 	}
+	
+	if(id == 263) {
+		if(type == 0 || type == 1) {
+		return true;
+		}
+	}
+	
+	if(isDamageable(id)) return true;
 
 	return false;
     }
@@ -271,5 +284,30 @@ public class Items {
 	}
 
 	return false;
+    }
+    
+    public static boolean isDamageable(int id) {
+    	//tools (including lighters and fishing poles) and armour
+	    if(id >= 256 && id <= 259) return true;
+	    if(id >= 267 && id <= 279) return true;
+	    if(id >= 283 && id <= 286) return true;
+	    if(id >= 290 && id <= 294) return true;
+	    if(id >= 298 && id <= 317) return true;
+	    if(id == 346) return true;
+	    return false;
+    }
+    
+    public static boolean isStackable(int id) {
+    	// false for tools (including buckets, bow, and lighters, but not fishing poles), food, armour, minecarts, boats, doors, and signs.
+	    if(id >= 256 && id <= 261) return false;
+	    if(id >= 267 && id <= 279) return false;
+	    if(id >= 282 && id <= 286) return false;
+	    if(id >= 290 && id <= 294) return false;
+	    if(id >= 297 && id <= 317) return false;
+	    if(id >= 322 && id <= 330) return false;
+	    if(id == 319 || id == 320 || id == 349 || id == 350) return false;
+	    if(id == 333 || id == 335 || id == 343 || id == 342) return false;
+	    if(id == 354 || id == 2256 || id == 2257) return false;
+	    return true;
     }
 }
