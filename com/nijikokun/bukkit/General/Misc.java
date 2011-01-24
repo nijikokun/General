@@ -199,4 +199,17 @@ public class Misc {
         builder.deleteCharAt(builder.length() - seperator.length()); // remove
         return builder.toString();
     }
+    
+    /** Turns "SomeName" into "Some Name" or "MyABC" into "My ABC".
+     (Inserts a space before a capital letter unless it is at the beginning of
+     the string or preceded by a capital letter.) */
+    public static String camelToPhrase(String str) {
+    	String newStr = "";
+    	for(int i = 0; i < str.length(); i++) {
+    		if(i > 0 && Character.isUpperCase(str.charAt(i)) && !Character.isUpperCase(str.charAt(i-1)))
+    			newStr += ' ';
+    		newStr += str.charAt(i);
+    	}
+    	return newStr;
+    }
 }

@@ -20,20 +20,20 @@ public class Items {
      * @return
      */
     public static String name(int id, int data) {
-	String longKey = Misc.string(id) + "," + Misc.string(data);
-	if (General.items.containsKey(Misc.string(id))) {
-	    return General.items.get(Misc.string(id));
-	} else if (data >= 0 && General.items.containsKey(longKey)) {
-	    return General.items.get(longKey);
-	}
-
-	for (Material item : Material.values()) {
-	    if (item.getId() == id) {
-		return item.toString();
-	    }
-	}
-
-	return Misc.string(id);
+		String longKey = Misc.string(id) + "," + Misc.string(data);
+		if (General.items.containsKey(Misc.string(id))) {
+			return Misc.camelToPhrase(General.items.get(Misc.string(id)));
+		} else if (data >= 0 && General.items.containsKey(longKey)) {
+			return Misc.camelToPhrase(General.items.get(longKey));
+		}
+	
+		for (Material item : Material.values()) {
+			if (item.getId() == id) {
+				return Misc.camelToPhrase(item.toString());
+			}
+		}
+	
+		return Misc.camelToPhrase(Misc.string(id));
     }
 
     /**
@@ -162,34 +162,41 @@ public class Items {
      * @return -1 if false, id if true.
      */
     public static int[] validate(String item) {
-	int[] ret = new int[]{-1, 0};
-
-	try {
-	    ret[0] = Integer.valueOf(item);
-	} catch (NumberFormatException e) {
-	    for (String id : General.items.keySet()) {
-		if (General.items.get(id).equalsIgnoreCase(item)) {
-		    if (id.contains(",")) {
-			String[] split = id.split(",");
-			ret[0] = Integer.valueOf(split[0]);
-			ret[1] = Integer.valueOf(split[1]);
-		    } else {
-			ret[0] = Integer.valueOf(id);
-		    }
+		int[] ret = new int[]{-1, 0};
+	
+		try {
+			ret[0] = Integer.valueOf(item);
+		} catch (NumberFormatException e) {
+			String val = "";
+			for (String id : General.items.keySet()) {
+				if(id.equalsIgnoreCase(item)){
+					val = General.items.get(id);
+					//General.log.info("Equals key: " + item + "=" + val);
+				} else if(General.items.get(id).equalsIgnoreCase(item)) {
+					val = id;
+					//General.log.info("Equals val: " + val + "=" + item);
+				}
+			}
+			//General.log.info("Resultant name: " + (val.isEmpty()?"<empty>":val));
+			if (val.contains(",")) {
+				String[] split = val.split(",");
+				ret[0] = Integer.valueOf(split[0]);
+				ret[1] = Integer.valueOf(split[1]);
+			} else {
+				ret[0] = Integer.valueOf(val);
+			}
+	
+			if (ret[0] == -1) {
+				return ret;
+			}
 		}
-	    }
-
-	    if (ret[0] == -1) {
-		return ret;
-	    }
-	}
-
-	if (!checkID(ret[0])) {
-	    ret[0] = -1;
-	    return ret;
-	} else {
-	    return ret;
-	}
+	
+		if (!checkID(ret[0])) {
+			ret[0] = -1;
+			return ret;
+		} else {
+			return ret;
+		}
     }
 
     /**
