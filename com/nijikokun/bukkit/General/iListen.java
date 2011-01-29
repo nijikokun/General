@@ -789,24 +789,29 @@ public class iListen extends PlayerListener {
 		    int online = players.length;
 		    ArrayList<String> list = new ArrayList<String>();
 		    String currently = "";
-		    int on = 0, perLine = 5, i = 1;
+		    int on = 0, perLine = 5, i = 0;
 
 		    for(Player current : players) {
-			if(current == null) { ++on; continue; }
-			if(i == perLine) { list.add(currently); currently = ""; i = 1; }
-			currently += (on >= online) ? current.getName() : current.getName() + ", ";
-			++on; ++i;
+				if(current == null) { ++on; continue; }
+				if(i == perLine) { 
+					list.add(currently); 
+					currently = ""; 
+					i = 0; 
+				}
+				
+				currently += (++on >= online) ? current.getName() : current.getName() + ", ";
+				++i;
 		    }
 
-		    // Guess list was smaller than 5.
-		    if(list.isEmpty()) {
+		    //Always append the line to the list
+		    //	because there may be extra that didn't get added
+		    //	when i == perLine
 			list.add(currently);
-		    }
 
 		    Messaging.send("&ePlayers list ("+on+"):");
 
 		    for(String line : list) {
-			Messaging.send(line);
+		    	Messaging.send(line);
 		    }
 
 		    Messaging.send(" ");
