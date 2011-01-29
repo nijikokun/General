@@ -135,60 +135,85 @@ public class General extends JavaPlugin {
     }
 
     public void registerCommands() {
-	if(commands) {
-	    l.register_custom_command("&f/online|playerlist|who &6-&e Shows player list.");
-	    l.register_custom_command("&f/online|playerlist|who [player] &6-&e Shows player info.");
-	    l.register_custom_command("&f/spawn &6-&e Return to spawn");
-	    l.register_custom_command("&f/setspawn &6-&e Change spawn to where you are.");
-	    l.register_custom_command("&f/time help &6-&e for more information.");
-	    l.register_custom_command("&f/me &6-&e Emote your messages");
-	    l.register_custom_command("&f/afk (message) &6-&e Go away or come back");
-	    l.register_custom_command("&f/i|give [item|player] (item|amount) (amount) &6-&e Give items.");
-	    l.register_custom_command("&f/message|tell|m [player] [message] &6-&e Private msg");
-	    l.register_custom_command("&f/compass|getpos &6-&e information about position");
-	    l.register_custom_command("&f/help or /? &6-&e Returns this documentation");
-	}
+		if(commands) {
+			l.register_custom_command("&f/online|playerlist|who &6-&e Shows player list.");
+			l.register_custom_command("&f/online|playerlist|who [player] &6-&e Shows player info.");
+			l.register_custom_command("&f/spawn &6-&e Return to spawn");
+			l.register_custom_command("&f/setspawn &6-&e Change spawn to where you are.");
+			l.register_custom_command("&f/time help &6-&e for more information.");
+			l.register_custom_command("&f/me &6-&e Emote your messages");
+			l.register_custom_command("&f/afk (message) &6-&e Go away or come back");
+			l.register_custom_command("&f/i|give [item|player] (item|amount) (amount) &6-&e Give items.");
+			l.register_custom_command("&f/message|tell|m [player] [message] &6-&e Private msg");
+			l.register_custom_command("&f/compass|getpos &6-&e information about position");
+			l.register_custom_command("&f/rlidb|reloaditems &6-&e Reload the items.db");
+			l.register_custom_command("&f/help or /? &6-&e Returns this documentation");
+		}
     }
 
     public void setupPermissions() {
-	Plugin test = this.getServer().getPluginManager().getPlugin("Permissions");
-
-	if(this.Permissions == null) {
-	    if(test != null) {
-		this.Permissions = (Permissions)test;
-	    } else {
-		log.info(Messaging.bracketize(name) + " Permission system not enabled. Disabling plugin.");
-		this.getServer().getPluginManager().disablePlugin(this);
-	    }
-	}
+		Plugin test = this.getServer().getPluginManager().getPlugin("Permissions");
+	
+		if(this.Permissions == null) {
+			if(test != null) {
+			this.Permissions = (Permissions)test;
+			} else {
+			log.info(Messaging.bracketize(name) + " Permission system not enabled. Disabling plugin.");
+			this.getServer().getPluginManager().disablePlugin(this);
+			}
+		}
     }
 
     /**
      * Setup Items
      */
     public void setupItems() {
-	Map mappedItems = null;
-	items = new HashMap<String, String>();
-
-	try {
-	    mappedItems = Items.returnMap();
-	} catch (Exception ex) {
-	    System.out.println(Messaging.bracketize(name + " Flatfile") + " could not open items.db!");
-	}
-
-	if(mappedItems != null) {
-	    for (Object item : mappedItems.keySet()) {
-		String id = (String)item;
-		String itemName = (String) mappedItems.get(item);
-
-		items.put(id, itemName);
-	    }
-	}
+		Map mappedItems = null;
+		items = new HashMap<String, String>();
+	
+		try {
+			mappedItems = Items.returnMap();
+		} catch (Exception ex) {
+			System.out.println(Messaging.bracketize(name + " Flatfile") + " could not open items.db!");
+		}
+	
+		if(mappedItems != null) {
+			for (Object item : mappedItems.keySet()) {
+				String left = (String)item;
+				String right = (String) mappedItems.get(item);
+				String id = left.trim();
+				String itemName;
+				//log.info("Found " + left + "=" + right + " in items.db");
+				if(id.matches("[0-9]+") || id.matches("[0-9]+,[0-9]+")) {
+					//log.info("matches");
+					if(right.contains(",")) {
+						String[] synonyms = right.split(",");
+						itemName = synonyms[0].replaceAll("\\s","");
+						items.put(id, itemName);
+						//log.info("Added " + id + "=" + itemName);
+						for(int i = 1; i < synonyms.length; i++) {
+							itemName = synonyms[i].replaceAll("\\s","");
+							items.put(itemName, id);
+							//log.info("Added " + itemName + "=" + id);
+						}
+					} else {
+						itemName = right.replaceAll("\\s","");
+						items.put(id, itemName);
+						//log.info("Added " + id + "=" + itemName);
+					}
+				} else {
+					itemName = left.replaceAll("\\s","");
+					id = right.trim();
+					items.put(itemName, id);
+					//log.info("Added " + itemName + "=" + id);
+				}
+			}
+		}
     }
 
     private void DefaultConfiguration(String name) {
-	try {
-	    (new File(getDataFolder(), name)).createNewFile();
-	} catch (IOException ex) { }
+		try {
+			(new File(getDataFolder(), name)).createNewFile();
+		} catch (IOException ex) { }
     }
 }

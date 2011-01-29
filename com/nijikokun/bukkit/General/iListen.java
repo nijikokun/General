@@ -18,7 +18,7 @@ import org.bukkit.Location;
 import org.bukkit.craftbukkit.CraftWorld;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import com.nijikokun.bukkit.iConomy.iConomy;
+//import com.nijikokun.bukkit.iConomy.iConomy;
 
 
 /**
@@ -286,10 +286,10 @@ public class iListen extends PlayerListener {
 
 	Plugin test = plugin.getServer().getPluginManager().getPlugin("iConomy");
 
-	if(test != null) {
-	    iConomy iConomy = (iConomy)test;
-	    balance = iConomy.db.get_balance(player.getName()) + " " + iConomy.currency;
-	}
+	//if(test != null) {
+	//    iConomy iConomy = (iConomy)test;
+	//    balance = iConomy.db.get_balance(player.getName()) + " " + iConomy.currency;
+	//}
 
 	for(String line : motd) {
 	    Messaging.send(
@@ -355,9 +355,18 @@ public class iListen extends PlayerListener {
 	    Messaging.send("&eSpawn position changed to where you are standing.");
 	}
 
+	if(Misc.isEither(base, "/rlidb","/reloaditems")) {
+	    if (!General.Permissions.Security.permission(player, "general.reloaditems")) {
+		return;
+	    }
+
+	   plugin.setupItems();
+	   Messaging.send("&eItems.db reloaded.");
+	}
+
 	if(Misc.is(base, "/spawn")) {
 	    if (!General.Permissions.Security.permission(player, "general.spawn")) {
-		return;
+			return;
 	    }
 
 	    player.teleportTo(spawn(player));
@@ -373,10 +382,10 @@ public class iListen extends PlayerListener {
 	    String balance = "";
 	    Plugin test = plugin.getServer().getPluginManager().getPlugin("iConomy");
 
-	    if(test != null) {
-		iConomy iConomy = (iConomy)test;
-		balance = iConomy.db.get_balance(player.getName()) + " " + iConomy.currency;
-	    }
+	    //if(test != null) {
+		//iConomy iConomy = (iConomy)test;
+		//balance = iConomy.db.get_balance(player.getName()) + " " + iConomy.currency;
+	    //}
 
 	    for(String line : motd) {
 		Messaging.send(
